@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens — the single source of truth for colour, type and spacing.
+   Specified in docs/02-sitemap-and-design-system.md. No component should
+   hardcode a hex value; add a token here instead.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  /* Brand blue. Sampled from the logo wordmark (#357AD1 = brand-600). */
+  --color-brand-50: #eff6fe;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c0f6;
+  --color-brand-400: #5f9ce9;
+  --color-brand-500: #437fd8;
+  --color-brand-600: #357ad1;
+  --color-brand-700: #2a5fa6;
+  --color-brand-800: #264f85;
+  --color-brand-900: #24446e;
+  --color-brand-950: #192b48;
+
+  /* Navy. The dominant colour of the existing site (#242F65 = navy-800). */
+  --color-navy-50: #f2f4fb;
+  --color-navy-100: #e5e9f6;
+  --color-navy-200: #c7d0eb;
+  --color-navy-300: #97aada;
+  --color-navy-400: #6079c4;
+  --color-navy-500: #415aaa;
+  --color-navy-600: #32448c;
+  --color-navy-700: #2b3972;
+  --color-navy-800: #242f65;
+  --color-navy-900: #1e2750;
+  --color-navy-950: #121242;
+
+  /* Logo green. Used sparingly, for positive/confirmation states only. */
+  --color-accent-400: #96c95c;
+  --color-accent-500: #7cb633;
+  --color-accent-600: #639229;
+
+  /* Neutrals */
+  --color-ink: #121226;
+  --color-body: #4a4f63;
+  --color-muted: #767b92;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f6f8fb;
+  --color-border: #e3e8f0;
+
+  /* Semantic. Coral is demoted from brand colour to danger only — it clashed
+     with the blue/green logo. */
+  --color-success: #2f855a;
+  --color-warning: #b7791f;
+  --color-danger: #ea5356;
+  --color-info: #2b6cb0;
+
+  /* Type */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Fluid type scale */
+  --text-display: clamp(2.5rem, 1.6rem + 3.6vw, 4rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+
+  --text-h1: clamp(2rem, 1.5rem + 2.1vw, 3rem);
+  --text-h1--line-height: 1.12;
+  --text-h1--letter-spacing: -0.018em;
+
+  --text-h2: clamp(1.625rem, 1.35rem + 1.2vw, 2.25rem);
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.014em;
+
+  --text-h3: clamp(1.25rem, 1.15rem + 0.45vw, 1.5rem);
+  --text-h3--line-height: 1.3;
+  --text-h3--letter-spacing: -0.008em;
+
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.7;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-DEFAULT: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* Navy-tinted shadows read warmer than black on a blue palette. */
+  --shadow-card: 0 1px 2px rgb(18 18 38 / 0.04), 0 4px 16px rgb(18 18 38 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(18 18 38 / 0.06), 0 12px 32px rgb(18 18 38 / 0.1);
+  --shadow-overlay: 0 24px 64px rgb(18 18 38 / 0.18);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-body);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.7;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-ink);
+    font-weight: 700;
+    text-wrap: balance;
+  }
+
+  /* One consistent, always-visible focus ring. Never remove it. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-navy-900);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility container-page {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 80rem; /* 1280px */
+  padding-inline: 1rem;
+
+  @media (width >= 40rem) {
+    padding-inline: 1.5rem;
+  }
+
+  @media (width >= 64rem) {
+    padding-inline: 2rem;
+  }
+}

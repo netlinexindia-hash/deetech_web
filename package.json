@@ -1,0 +1,31 @@
+{
+  "name": "deetechgroup",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DeeTech Group website — Next.js public site + admin CMS, Express API, PostgreSQL",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@deetech/web",
+    "dev:api": "npm run dev --workspace=@deetech/api",
+    "build": "npm run build --workspace=@deetech/shared-types && npm run build --workspace=@deetech/api && npm run build --workspace=@deetech/web",
+    "start": "npm run start --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run build --workspace=@deetech/shared-types && npm run typecheck --workspaces --if-present",
+    "test": "npm run build --workspace=@deetech/shared-types && npm run test --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run redirects:build && npm run lint && npm run typecheck && npm run test",
+    "redirects:build": "node infrastructure/deployment/generate-redirects.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1"
+  }
+}

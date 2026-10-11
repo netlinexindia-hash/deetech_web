@@ -1,0 +1,104 @@
+# Local development stack.
+#
+#   cp .env.example .env   # then edit
+#   docker compose up --build
+#
+# Production uses this file plus infrastructure/deployment/docker-compose.prod.yml,
+# which adds the nginx service, TLS and restart policies.
+#
+# Ports: only the web app and the API are published, and only to 127.0.0.1.
+# PostgreSQL is reachable on the private `deetech` network and nowhere else.
+
+name: deetech
+
+services:
+  db:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-deetech}
+      POSTGRES_USER: ${POSTGRES_USER:-deetech}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      # Slightly stricter than the default; matters once this image is reused
+      # on the VPS.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - deetech
+    # No `ports:` on purpose. To inspect the database locally, either exec into
+    # the container or uncomment a 127.0.0.1-bound mapping in
+    # docker-compose.override.yml (git-ignored).
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-deetech} -d ${POSTGRES_DB:-deetech}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: &default-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      API_PORT: 4000
+      API_HOST: 0.0.0.0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      MEDIA_STORAGE_PATH: /var/lib/deetech/media
+    volumes:
+      - media-data:/var/lib/deetech/media
+    networks:
+      - deetech
+    ports:
+      # Bound to loopback: the host can reach it, the internet cannot.
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *default-logging
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID:-}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: ${API_BASE_URL:-http://api:4000}
+    networks:
+      - deetech
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      # `service_started`, not `service_healthy`: the site must still render
+      # (with graceful fallbacks) when the API is briefly unavailable.
+      api:
+        condition: service_started
+    logging: *default-logging
+
+networks:
+  deetech:
+    driver: bridge
+
+volumes:
+  db-data:
+  media-data:
+# A Docker volume is not a backup. Database and media are dumped to off-server
+# storage by infrastructure/deployment/backup.sh (Week 5, Day 25).

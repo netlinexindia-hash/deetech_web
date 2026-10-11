@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build shared types
+        run: npm run build --workspace=@deetech/shared-types
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Redirect map is valid and in sync
+        run: |
+          npm run redirects:build
+          git diff --exit-code infrastructure/nginx/snippets/deetech-redirects.conf
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit production dependencies
+        # Dev-only advisories are reported but do not fail the build; anything
+        # that ships to users does.
+        run: npm audit --omit=dev --audit-level=high

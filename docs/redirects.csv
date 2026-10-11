@@ -1,0 +1,25 @@
+old_path,new_path,status,note
+/index.php/home-2/,/,301,Already 301s on WordPress; keep the rule after cutover
+/index.php/about/,/about,301,Drop index.php prefix
+/index.php/contact-us/,/contact,301,Slug shortened from contact-us to contact
+/index.php/web-development/,/services/web-development,301,Moved under /services
+/index.php/managed-it-services/,/services/managed-it-services,301,Moved under /services
+/index.php/network-service/,/services/network-services,301,Moved under /services; slug pluralised
+/index.php/email-service/,/services/email-services,301,Moved under /services; slug pluralised
+/index.php/web-hosting/,/services/web-hosting,301,Moved under /services
+/index.php/blog/,/blog,301,Drop index.php prefix
+/index.php/2023/10/26/hello-world/,/blog,301,Placeholder post is not migrated; redirect to blog index
+/index.php/category/uncategorized/,/blog,301,No real taxonomy to preserve
+/index.php/author/myzeontech/,/about,301,Author archive retired; carries the old MyZeon brand name
+/index.php/feed/,/blog/rss.xml,301,Point the legacy feed at the new RSS feed
+/index.php/comments/feed/,/blog,301,Comments are not part of the MVP
+/about/,/about,301,Clean path 404s today; map it anyway so it never 404s again
+/contact-us/,/contact,301,Clean path 404s today
+/web-development/,/services/web-development,301,Clean path 404s today
+/managed-it-services/,/services/managed-it-services,301,Clean path 404s today
+/network-service/,/services/network-services,301,Clean path 404s today
+/email-service/,/services/email-services,301,Clean path 404s today
+/web-hosting/,/services/web-hosting,301,Clean path 404s today
+/blog/,/blog,301,Clean path 404s today
+/index.php/sitemap_index.xml,/sitemap.xml,301,robots.txt advertises this URL and it currently 404s
+/index.php/,/,301,Bare index.php root; broader index.php paths are caught by the rewrite in the nginx server block
