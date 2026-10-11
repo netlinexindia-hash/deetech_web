@@ -46,8 +46,8 @@ export function LinkCard({
       className={cn(
         "group relative rounded-xl border border-border bg-white p-6 shadow-card",
         "transition-[box-shadow,border-color,transform] duration-200",
-        "hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-card-hover",
-        "focus-within:border-brand-300",
+        "hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover",
+        "focus-within:border-brand-400",
         className,
       )}
     >
@@ -63,7 +63,7 @@ export function LinkCard({
 
       <span
         aria-hidden="true"
-        className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700"
+        className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-800"
       >
         Learn more
         <svg

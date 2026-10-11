@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/layout/Logo";
 import { Container } from "@/components/ui/Section";
 import { contact, footerNav, site } from "@/lib/site";
 
@@ -38,22 +39,9 @@ export function Footer() {
       <Container className="py-14 md:py-20">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           <div className="lg:pr-6">
-            {/* The logo is dark-on-light, so it sits on a light chip here
-                rather than being inverted into something off-brand. */}
-            <Link
-              href="/"
-              className="inline-flex rounded-lg bg-white px-3 py-2"
-              aria-label="DeeTech Group — go to the homepage"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/brand/deetech-logo.png"
-                alt="DeeTech Group"
-                width={243}
-                height={79}
-                className="h-9 w-auto"
-              />
-            </Link>
+            {/* The mark is transparent and carries no dark ink, so it sits
+                directly on the navy background — no white chip needed. */}
+            <Logo tone="dark" />
             <p className="mt-5 max-w-sm text-[0.9375rem] leading-relaxed">
               {site.description}
             </p>
@@ -88,7 +76,7 @@ export function Footer() {
             <div className="mt-6 space-y-5">
               {contact.offices.map((office) => (
                 <div key={office.label}>
-                  <p className="text-xs font-semibold tracking-wider text-navy-400 uppercase">
+                  <p className="text-xs font-semibold tracking-wider text-navy-300 uppercase">
                     {office.label}
                   </p>
                   <address className="mt-1 text-[0.9375rem] not-italic">

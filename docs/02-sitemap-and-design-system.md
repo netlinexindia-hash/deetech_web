@@ -133,19 +133,37 @@ Flat category via `category` (nullable) for now; no tag table in the MVP. One re
 
 ### Brand colours
 
-Sampled from the live logo (`Dtg-logo-new.png`) and the Elementor stylesheets actually in use:
+> **Revised 2026-10-11.** This section originally derived the palette from
+> `Dtg-logo-new.png`, the blue-and-green wordmark on the live site. The owner
+> then supplied the actual brand mark (`assets/brand/Deetech-logo.png`), a
+> cyan/magenta/yellow Penrose triangle, and the palette was re-derived from it.
+
+Sampled from the brand mark and from the Elementor stylesheets in use:
 
 | Source | Value |
 |---|---|
-| Logo wordmark "TECHGROUP" | `#357AD1` |
-| Logo swoosh (green) | `#7CB633` (sampled range `#74B222`–`#8ABB3C`) |
-| Logo wordmark "DEE" | near-black, reads as deep navy |
+| Logo cyan ("Dee" ribbon) | `#01B5F0` |
+| Logo magenta ("Tech" ribbon) | `#ED3C96` |
+| Logo yellow ("Group" ribbon) | `#FFC50A` |
 | Elementor kit primary | `#121242` |
 | Dominant page navy (37 uses) | `#242F65` |
 | Body text grey (19 uses) | `#767B92` |
-| CTA / accent coral | `#EA5356` and `#FF5151` |
+| Legacy CTA coral | `#EA5356` and `#FF5151` |
 
-The live site runs navy + coral while the logo runs blue + green — they do not currently agree. **Resolution: the logo wins.** Brand blue `#357AD1` becomes the primary action colour, deep navy `#242F65` becomes the ink and dark-section background, and the logo green `#7CB633` becomes the single accent for positive/confirmation states. Coral is kept only as the semantic `danger` colour, not as a brand colour, which removes the clash.
+All three logo colours are too light to carry text on white:
+
+| Colour | Contrast on white | Verdict |
+|---|---|---|
+| Cyan `#01B5F0` | 2.37:1 | Mark only; darken to `#007DB3` (4.58:1) to use |
+| Magenta `#ED3C96` | 3.69:1 | Mark only; darken to `#C21A79` (5.65:1) to use |
+| Yellow `#FFC50A` | 1.59:1 | **Mark only.** There is no accessible way to use it for text, a button or an icon on a light background, so it is deliberately not a UI token |
+
+**Resolution.** Navy `#242F65` stays the ink and the dark-section background —
+it is the quiet counterweight the saturated mark needs. The primary action
+colour is the logo cyan darkened to **`#007DB3`** (`brand-700`). Magenta
+darkened to **`#C21A79`** (`accent-700`) is the single accent, reserved for the
+most important call to action on a page. Coral is kept only as the semantic
+`danger` colour. Yellow lives in the mark.
 
 ### Tokens
 
@@ -153,14 +171,16 @@ Defined once in `apps/web/src/app/globals.css` as a Tailwind v4 `@theme` block. 
 
 ```
 Brand
-  --color-brand-50 … 950      blue ramp around #357AD1 (600 is the base)
+  --color-brand-50 … 950      cyan ramp anchored on the logo's #01B5F0 (= brand-500)
+                              brand-700 #007DB3 is the lightest step that carries
+                              white text; brand-800 #01648F for text on white
   --color-navy-50 … 950       navy ramp around #242F65 (800 is the base)
-  --color-accent-500          #7CB633  logo green
+  --color-accent-400 … 800    magenta ramp anchored on the logo's #ED3C96 (= accent-500)
+                              accent-700 #C21A79 is the text/button-safe step
 Neutral
-  --color-ink                 #121226  headings
-  --color-body                #4A4F63  body copy (darkened from the legacy #767B92, which
-                                       fails WCAG AA at body size on white)
-  --color-muted               #767B92  metadata only, never body copy
+  --color-ink                 #121226  headings                       18.4:1
+  --color-body                #4A4F63  body copy                       8.1:1
+  --color-muted               #6A6E83  metadata                        5.0:1
   --color-surface             #FFFFFF
   --color-surface-subtle      #F6F8FB
   --color-border              #E3E8F0
@@ -168,7 +188,31 @@ Semantic
   --color-success / --color-warning / --color-danger (#EA5356) / --color-info
 ```
 
-Contrast: `--color-body` (`#4A4F63`) on `--color-surface` is ~8.1:1; brand-600 (`#357AD1`) on white is ~3.6:1, so it is used for large text, icons and solid button *backgrounds* (white on brand-600 is ~4.6:1) — **never for small body text on white**. Navy-800 on white is ~13:1.
+Both neutrals are darkened from the legacy site's `#767B92`, which is 4.18:1 on
+white and fails AA for normal text at any size.
+
+**The contrast rule that follows from this palette:** the two light steps of
+each brand ramp (`brand-500`/`600`, `accent-500`/`600`) are decoration — fills,
+gradients, borders, hover washes. Anything carrying text uses `-700` or darker.
+Verified in the browser: primary button white-on-`brand-700` 4.58:1, eyebrow
+`brand-800` on `surface-subtle` 6.13:1, "Learn more" `brand-800` on white
+6.52:1, nav links navy-800 on white 12.58:1.
+
+### Logo usage
+
+The mark is square (555x533 after trimming) and the words "Dee", "Tech" and
+"Group" written along its ribbons are illegible below roughly 120px. The header
+and footer therefore pair the mark with a **typeset wordmark** ("DeeTech Group"
++ "Make IT Possible") rather than relying on the artwork to carry the name.
+`Logo` takes a `tone` prop: `light` for dark text on light backgrounds, `dark`
+for white text on navy. The mark itself needs no inversion or background chip —
+it is transparent and carries no dark ink.
+
+Source artwork and the icon generator live in `assets/brand/`. Running
+`python assets/brand/build-icons.py` regenerates the trimmed mark plus the
+favicon set (`icon.png` 512, `apple-icon.png` 180 flattened onto white, and a
+16/32/48 `favicon.ico`). The artwork is **raster only** — a vector source is
+still outstanding.
 
 ### Typography
 

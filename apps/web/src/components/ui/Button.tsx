@@ -13,11 +13,12 @@ const base =
   "disabled:pointer-events-none disabled:opacity-50";
 
 const variants: Record<ButtonVariant, string> = {
-  // White on brand-600 is ~4.6:1 — the blue is only used as a background,
-  // never as small text on white.
-  primary: "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800",
+  // brand-700 is the lightest cyan that carries white text at 4.58:1. The
+  // logo cyan itself (brand-500) is 2.37:1 and is never used as a surface
+  // behind text.
+  primary: "bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900",
   secondary:
-    "border border-navy-200 bg-white text-navy-800 hover:border-brand-300 hover:bg-brand-50",
+    "border border-navy-200 bg-white text-navy-800 hover:border-brand-400 hover:bg-brand-50",
   ghost: "text-navy-800 hover:bg-navy-50",
   inverse: "bg-white text-navy-900 hover:bg-navy-50",
 };

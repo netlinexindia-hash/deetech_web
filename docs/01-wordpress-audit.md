@@ -68,10 +68,23 @@ The single post is the WordPress default `hello-world` post with placeholder bod
 
 Logo files found:
 
-- `2024/01/Dtg-logo-new-e1705844072500.png` — the logo currently rendered in the header.
-- `2023/10/Dtg-logo-new.png`, `2023/10/DTG-logo.png`, `2023/10/Deetech-logo.png`, `2023/10/logoo-PhotoRoom.png-PhotoRoom.png` — older/duplicate variants. `DTG-logo.png` uses a completely different magenta/cyan/yellow palette and should be treated as retired.
+- `2024/01/Dtg-logo-new-e1705844072500.png` — the blue-and-green wordmark rendered in the live site's header.
+- `2023/10/Dtg-logo-new.png`, `2023/10/DTG-logo.png`, `2023/10/Deetech-logo.png`, `2023/10/logoo-PhotoRoom.png-PhotoRoom.png` — duplicate and alternate variants.
 
-**[NEEDS ADMIN]** Obtain vector (SVG/AI) source for the current logo; all available copies are raster.
+> **Correction, 2026-10-11.** This section first called the magenta/cyan/yellow
+> `DTG-logo.png` "retired" because the wordmark was the one actually rendered on
+> the live site. That was wrong. The owner has confirmed the **Penrose-triangle
+> mark is the current brand**, and supplied it as
+> [`assets/brand/Deetech-logo.png`](../assets/brand/Deetech-logo.png) (661x606)
+> with a favicon. The blue-and-green wordmark is the stale asset. The live site
+> is still showing it — one more item for the Day 21 content pass.
+>
+> The brand palette is therefore cyan `#01B5F0`, magenta `#ED3C96`, yellow
+> `#FFC50A`, not the blue/green the design system was first built on. See the
+> revised "Brand colours" section of
+> [`docs/02-sitemap-and-design-system.md`](02-sitemap-and-design-system.md).
+
+**[NEEDS ADMIN]** Obtain vector (SVG/AI) source for the mark; every copy supplied so far is raster.
 
 ## 3. Complete URL inventory
 

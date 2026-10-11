@@ -7,20 +7,25 @@
    --------------------------------------------------------------------------- */
 
 @theme {
-  /* Brand blue. Sampled from the logo wordmark (#357AD1 = brand-600). */
-  --color-brand-50: #eff6fe;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c0f6;
-  --color-brand-400: #5f9ce9;
-  --color-brand-500: #437fd8;
-  --color-brand-600: #357ad1;
-  --color-brand-700: #2a5fa6;
-  --color-brand-800: #264f85;
-  --color-brand-900: #24446e;
-  --color-brand-950: #192b48;
+  /* Brand cyan. Anchored on the logo's #01B5F0, which is brand-500.
+     The raw logo cyan is only 2.37:1 on white, so it is never used for text
+     or as a button background. The usable steps are brand-700 (4.58:1 with
+     white) and brand-800 (6.52:1); see docs/02-sitemap-and-design-system.md. */
+  --color-brand-50: #e6f7fe;
+  --color-brand-100: #cceefc;
+  --color-brand-200: #99ddf9;
+  --color-brand-300: #5cc9f5;
+  --color-brand-400: #1fb8f1;
+  --color-brand-500: #01b5f0;
+  --color-brand-600: #0096c9;
+  --color-brand-700: #007db3;
+  --color-brand-800: #01648f;
+  --color-brand-900: #084f6f;
+  --color-brand-950: #06354a;
 
-  /* Navy. The dominant colour of the existing site (#242F65 = navy-800). */
+  /* Navy. Carried over from the existing site (#242F65 = navy-800). It is the
+     ink, the dark section background and the quiet counterweight to the very
+     saturated logo. */
   --color-navy-50: #f2f4fb;
   --color-navy-100: #e5e9f6;
   --color-navy-200: #c7d0eb;
@@ -33,15 +38,25 @@
   --color-navy-900: #1e2750;
   --color-navy-950: #121242;
 
-  /* Logo green. Used sparingly, for positive/confirmation states only. */
-  --color-accent-400: #96c95c;
-  --color-accent-500: #7cb633;
-  --color-accent-600: #639229;
+  /* Accent magenta, from the logo's #ED3C96 (accent-500). Used sparingly, for
+     the single most important call to action on a page. accent-700 is the
+     text/button-safe step at 5.65:1. */
+  --color-accent-400: #f472b6;
+  --color-accent-500: #ed3c96;
+  --color-accent-600: #d42283;
+  --color-accent-700: #c21a79;
+  --color-accent-800: #a31565;
+
+  /* The logo's yellow #FFC50A is 1.59:1 on white. It stays in the mark and is
+     deliberately not a UI token — there is no accessible way to use it for
+     text, a button or an icon on a light background. */
 
   /* Neutrals */
   --color-ink: #121226;
   --color-body: #4a4f63;
-  --color-muted: #767b92;
+  /* Darkened from the legacy #767B92, which is 4.18:1 on white and fails
+     WCAG AA for normal text. #6A6E83 is 5.03:1 and keeps the same hue. */
+  --color-muted: #6a6e83;
   --color-surface: #ffffff;
   --color-surface-subtle: #f6f8fb;
   --color-border: #e3e8f0;
@@ -118,7 +133,7 @@
 
   /* One consistent, always-visible focus ring. Never remove it. */
   :focus-visible {
-    outline: 2px solid var(--color-brand-600);
+    outline: 2px solid var(--color-brand-700);
     outline-offset: 2px;
     border-radius: 2px;
   }

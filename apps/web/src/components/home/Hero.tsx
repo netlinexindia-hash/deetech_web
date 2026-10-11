@@ -5,14 +5,15 @@ import { contact } from "@/lib/site";
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-navy-950">
-      {/* Decoration only: CSS gradients instead of the ~15 decorative PNGs the
-          legacy Elementor homepage loaded. */}
+      {/* Decoration only: the logo's cyan and magenta as CSS gradients,
+          instead of the ~15 decorative PNGs the legacy Elementor homepage
+          loaded. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            "radial-gradient(60rem 30rem at 15% -10%, rgb(53 122 209 / 0.35), transparent 60%), radial-gradient(40rem 24rem at 95% 0%, rgb(124 182 51 / 0.14), transparent 60%)",
+            "radial-gradient(60rem 30rem at 15% -10%, rgb(1 181 240 / 0.30), transparent 60%), radial-gradient(40rem 24rem at 95% 0%, rgb(237 60 150 / 0.18), transparent 60%)",
         }}
       />
 

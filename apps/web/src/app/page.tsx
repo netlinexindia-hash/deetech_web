@@ -63,7 +63,7 @@ export default function HomePage() {
               <li key={capability.title} className="flex gap-4">
                 <span
                   aria-hidden="true"
-                  className="mt-1.5 inline-flex size-2.5 shrink-0 rounded-full bg-accent-500"
+                  className="mt-1.5 inline-flex size-2.5 shrink-0 rounded-full bg-accent-600"
                 />
                 <div>
                   <h3 className="text-h3">{capability.title}</h3>

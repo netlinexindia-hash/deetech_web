@@ -17,7 +17,7 @@ const tones: Record<SectionTone, string> = {
   default: "bg-white",
   subtle: "bg-surface-subtle",
   navy: "bg-navy-900 text-navy-100",
-  brand: "bg-brand-600 text-white",
+  brand: "bg-brand-800 text-white",
 };
 
 /**
@@ -82,7 +82,7 @@ export function SectionHeading({
         <p
           className={cn(
             "mb-3 text-sm font-semibold tracking-[0.14em] uppercase",
-            inverse ? "text-brand-200" : "text-brand-700",
+            inverse ? "text-brand-200" : "text-brand-800",
           )}
         >
           {eyebrow}

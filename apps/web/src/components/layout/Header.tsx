@@ -69,8 +69,8 @@ function NavDropdown({ item, pathname }: { item: NavItem; pathname: string }) {
         className={cn(
           "inline-flex items-center gap-1 rounded-md px-3 py-2 text-[0.9375rem] font-medium transition-colors",
           isActive(pathname, item.href)
-            ? "text-brand-700"
-            : "text-navy-800 hover:text-brand-700",
+            ? "text-brand-800"
+            : "text-navy-800 hover:text-brand-800",
         )}
       >
         {item.label}
@@ -194,8 +194,8 @@ export function Header() {
                       className={cn(
                         "inline-flex items-center rounded-md px-3 py-2 text-[0.9375rem] font-medium transition-colors",
                         isActive(pathname, item.href)
-                          ? "text-brand-700"
-                          : "text-navy-800 hover:text-brand-700",
+                          ? "text-brand-800"
+                          : "text-navy-800 hover:text-brand-800",
                       )}
                     >
                       {item.label}
@@ -209,7 +209,7 @@ export function Header() {
           <div className="hidden items-center gap-3 lg:flex">
             <a
               href={`tel:${contact.phoneHref}`}
-              className="inline-flex min-h-11 items-center text-sm font-medium text-navy-700 hover:text-brand-700"
+              className="inline-flex min-h-11 items-center text-sm font-medium text-navy-700 hover:text-brand-800"
             >
               {contact.phone}
             </a>
@@ -275,7 +275,7 @@ export function Header() {
                       className={cn(
                         "flex min-h-11 items-center rounded-lg px-3 text-base font-semibold",
                         isActive(pathname, item.href)
-                          ? "bg-brand-50 text-brand-700"
+                          ? "bg-brand-50 text-brand-800"
                           : "text-navy-900 hover:bg-navy-50",
                       )}
                     >

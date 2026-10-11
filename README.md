@@ -41,6 +41,8 @@ packages/
 database/
   migrations/             (Week 3)
   seeds/                  (Week 3)
+assets/
+  brand/                  Source logo artwork + the favicon generator
 infrastructure/
   docker/                 Dockerfiles for web and api
   nginx/                  Reverse proxy config + generated redirect snippet
@@ -111,6 +113,21 @@ Every legacy WordPress URL is listed in [`docs/redirects.csv`](docs/redirects.cs
 that no rule points at itself, duplicates another, or forms a redirect chain.
 Edit the CSV, never the generated file — CI fails if they are out of sync.
 
+## Brand assets
+
+Source artwork lives in [`assets/brand/`](assets/brand). The web logo and the
+whole favicon set are generated from it:
+
+```bash
+python assets/brand/build-icons.py
+```
+
+That writes `apps/web/public/brand/deetech-mark.png` (trimmed mark),
+`apps/web/src/app/icon.png` (512), `apps/web/src/app/apple-icon.png` (180,
+flattened onto white because iOS ignores transparency) and
+`apps/web/src/app/favicon.ico` (16/32/48). Re-run it whenever the source
+artwork changes; do not hand-edit the generated files. Requires Pillow.
+
 ## Conventions
 
 - **Server-side validation.** Every request body is parsed with a Zod schema.
@@ -138,8 +155,13 @@ Edit the CSV, never the generated file — CI fails if they are out of sync.
 - **Docker is not installed on the current development machine**, so
   `docker-compose.yml` and both Dockerfiles have been written but **not yet
   executed**. They must be built and run before the Week 6 deployment work.
-- `apps/web/public/brand/deetech-logo.png` is a 243x79 raster copy taken from
-  the live site. Replace it with the vector source when it is supplied.
+- **The brand artwork is raster only.** `assets/brand/Deetech-logo.png` is a
+  661x606 PNG. A vector (SVG/AI) source is still outstanding; until it arrives
+  the mark cannot be recoloured or scaled cleanly beyond its source resolution.
+- **The live WordPress site still shows the old blue-and-green wordmark.** The
+  rebuild uses the current Penrose-triangle mark. Updating the live site is not
+  in scope here, but it is worth doing before cutover so the two do not disagree
+  in search results and link previews.
 
 ## Documentation
 
