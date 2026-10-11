@@ -19,4 +19,10 @@ export default tseslint.config(
       "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },
+  {
+    // Operator-facing CLIs. Printing to stdout is their entire interface —
+    // routing it through the structured logger would make it unreadable.
+    files: ["src/db/cli.ts", "src/db/create-admin.ts", "src/db/dev-server.ts"],
+    rules: { "no-console": "off" },
+  },
 );

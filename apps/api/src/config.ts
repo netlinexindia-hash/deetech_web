@@ -22,11 +22,6 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
 
-  /**
-   * Optional until Week 3 Day 11, when the schema and migrations land.
-   * The health endpoint reports `not_configured` while it is absent rather
-   * than pretending the database is fine.
-   */
   DATABASE_URL: z
     .url({
       // Constrained to a Postgres URL on purpose. Zod's bare `url()` accepts
@@ -36,6 +31,33 @@ const envSchema = z.object({
       error: "Must be a postgres:// or postgresql:// connection URL",
     })
     .optional(),
+
+  /**
+   * Used to hash session ids and client IPs. Required in production — a
+   * predictable hash of an IP is not meaningfully better than storing it.
+   */
+  SESSION_SECRET: z.string().min(32).optional(),
+
+  /** Session lifetime, in hours. */
+  SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(12),
+
+  // --- SMTP ----------------------------------------------------------------
+  // Optional as a group. With no host the mailer is a no-op that logs; an
+  // enquiry is still saved and still appears in the admin list.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_SECURE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  MAIL_FROM: z.string().default("DeeTech Group <no-reply@deetechgroup.com>"),
+  ENQUIRY_NOTIFICATION_TO: z.string().default("support@deetechgroup.com"),
+
+  // --- enquiry throttling --------------------------------------------------
+  ENQUIRY_MAX_PER_WINDOW: z.coerce.number().int().min(1).max(100).default(5),
+  ENQUIRY_WINDOW_MINUTES: z.coerce.number().int().min(1).max(1440).default(60),
 });
 
 export type AppConfig = Readonly<{
@@ -46,6 +68,21 @@ export type AppConfig = Readonly<{
   corsAllowedOrigins: string[];
   logLevel: string;
   databaseUrl: string | undefined;
+  sessionSecret: string | undefined;
+  sessionTtlHours: number;
+  smtp: Readonly<{
+    host: string | undefined;
+    port: number;
+    secure: boolean;
+    user: string | undefined;
+    password: string | undefined;
+    from: string;
+    notificationTo: string;
+  }>;
+  enquiry: Readonly<{
+    maxPerWindow: number;
+    windowMinutes: number;
+  }>;
 }>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -59,10 +96,27 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 
   const data = parsed.data;
+  const isProduction = data.NODE_ENV === "production";
+
+  // Checked after parsing because the requirement depends on NODE_ENV.
+  // Starting production without these would mean unauthenticated admin
+  // routes or a database that is not there.
+  if (isProduction) {
+    const missing: string[] = [];
+    if (!data.DATABASE_URL) missing.push("DATABASE_URL");
+    if (!data.SESSION_SECRET) missing.push("SESSION_SECRET (at least 32 characters)");
+    if (missing.length > 0) {
+      throw new Error(
+        `Missing required production configuration:\n${missing
+          .map((name) => `  - ${name}`)
+          .join("\n")}`,
+      );
+    }
+  }
 
   return Object.freeze({
     nodeEnv: data.NODE_ENV,
-    isProduction: data.NODE_ENV === "production",
+    isProduction,
     port: data.API_PORT,
     host: data.API_HOST,
     corsAllowedOrigins: data.CORS_ALLOWED_ORIGINS.split(",")
@@ -70,5 +124,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .filter((origin) => origin.length > 0),
     logLevel: data.LOG_LEVEL,
     databaseUrl: data.DATABASE_URL,
+    sessionSecret: data.SESSION_SECRET,
+    sessionTtlHours: data.SESSION_TTL_HOURS,
+    smtp: Object.freeze({
+      host: data.SMTP_HOST,
+      port: data.SMTP_PORT,
+      secure: data.SMTP_SECURE,
+      user: data.SMTP_USER,
+      password: data.SMTP_PASSWORD,
+      from: data.MAIL_FROM,
+      notificationTo: data.ENQUIRY_NOTIFICATION_TO,
+    }),
+    enquiry: Object.freeze({
+      maxPerWindow: data.ENQUIRY_MAX_PER_WINDOW,
+      windowMinutes: data.ENQUIRY_WINDOW_MINUTES,
+    }),
   });
 }

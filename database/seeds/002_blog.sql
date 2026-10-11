@@ -1,29 +1,12 @@
-import type { BlogPost } from "@deetech/shared-types";
+-- 002 — blog
+--
+-- One seed article, generated from
+-- apps/web/src/lib/content/fixtures/posts.ts. The legacy hello-world post
+-- is deliberately NOT migrated; its URL 301s to /blog (docs/redirects.csv).
 
-/**
- * The blog launches with one seed article.
- *
- * The legacy site's only post is the WordPress default `hello-world`, titled
- * "What is Lorem Ipsum?" with placeholder body text. It is deliberately not
- * migrated; `/index.php/2023/10/26/hello-world/` 301s to `/blog` instead
- * (docs/redirects.csv).
- *
- * The article below is written to be factual and vendor-neutral — it makes no
- * claims about DeeTech Group's history, clients or results, because none of
- * those have been verified. It exists so the listing and article templates
- * have real content to be reviewed against, and so the blog does not launch
- * empty. Review it, change the byline if it should carry a person's name,
- * and replace or add to it before launch.
- */
-
-export const posts: BlogPost[] = [
-  {
-    id: 1,
-    title: "Shared, cloud or dedicated hosting: how to actually choose",
-    slug: "shared-cloud-or-dedicated-hosting",
-    excerpt:
-      "Hosting tiers are usually sold on specifications. The more useful question is what your traffic looks like, what happens when it spikes, and who is responsible when something breaks at 2am.",
-    body: `Most hosting comparisons are a table of CPU cores, RAM and storage. That table tells you almost nothing about which tier you should be on, because the thing that decides it is not the specification — it is the shape of your traffic and your tolerance for being offline.
+INSERT INTO blog_posts (title, slug, excerpt, body, author_name, category, status, published_at, seo_title, seo_description)
+VALUES
+  ('Shared, cloud or dedicated hosting: how to actually choose', 'shared-cloud-or-dedicated-hosting', 'Hosting tiers are usually sold on specifications. The more useful question is what your traffic looks like, what happens when it spikes, and who is responsible when something breaks at 2am.', 'Most hosting comparisons are a table of CPU cores, RAM and storage. That table tells you almost nothing about which tier you should be on, because the thing that decides it is not the specification — it is the shape of your traffic and your tolerance for being offline.
 
 Here is a more useful way to work through it.
 
@@ -52,7 +35,7 @@ On shared hosting your site runs on a machine alongside many others. You get a s
 
 Cloud hosting allocates resources that can be adjusted, often quickly and sometimes automatically.
 
-**It fits** sites with uneven traffic: seasonal businesses, anything tied to campaigns, anything growing fast enough that this year's sizing will be wrong next year.
+**It fits** sites with uneven traffic: seasonal businesses, anything tied to campaigns, anything growing fast enough that this year''s sizing will be wrong next year.
 
 **The real constraint** is that elasticity is not free and it is not automatic. Scaling only helps if the application can actually use more resources — a site bottlenecked on a single slow database query will be just as slow on four servers as on one. Cloud hosting rewards applications that were designed to scale and punishes the assumption that it will fix a performance problem.
 
@@ -72,7 +55,7 @@ Whichever tier you land on, these decide whether hosting is a problem or not:
 
 **Who notices an outage first — you or your customers?** Uptime monitoring is inexpensive and the difference between finding out at 02:10 and finding out in an email at 09:30.
 
-**What is the patching arrangement?** Unpatched software is how most sites are compromised, and "we'll do it when we remember" is not an arrangement.
+**What is the patching arrangement?** Unpatched software is how most sites are compromised, and "we''ll do it when we remember" is not an arrangement.
 
 **Who is responsible at 2am?** Get this answered before you need it, in writing.
 
@@ -82,16 +65,14 @@ If you are genuinely unsure: start on the smallest tier that comfortably handles
 
 ---
 
-If you would like a second opinion on what your site actually needs, [get in touch](/contact) — we are happy to look at the numbers with you.`,
-    authorName: "DeeTech Group",
-    category: "Hosting",
-    featuredImage: null,
-    status: "published",
-    publishedAt: "2026-10-11T09:00:00.000Z",
-    seoTitle: "Shared, Cloud or Dedicated Hosting: How to Choose",
-    seoDescription:
-      "A practical guide to choosing a hosting tier — what each one actually fits, where each one bites, and the four questions that matter more than the plan you pick.",
-    createdAt: "2026-10-11T09:00:00.000Z",
-    updatedAt: "2026-10-11T09:00:00.000Z",
-  },
-];
+If you would like a second opinion on what your site actually needs, [get in touch](/contact) — we are happy to look at the numbers with you.', 'DeeTech Group', 'Hosting', 'published', '2026-10-11T09:00:00.000Z', 'Shared, Cloud or Dedicated Hosting: How to Choose', 'A practical guide to choosing a hosting tier — what each one actually fits, where each one bites, and the four questions that matter more than the plan you pick.')
+ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  excerpt = EXCLUDED.excerpt,
+  body = EXCLUDED.body,
+  author_name = EXCLUDED.author_name,
+  category = EXCLUDED.category,
+  status = EXCLUDED.status,
+  published_at = EXCLUDED.published_at,
+  seo_title = EXCLUDED.seo_title,
+  seo_description = EXCLUDED.seo_description;

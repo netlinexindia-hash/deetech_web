@@ -13,7 +13,7 @@ The full specification and the 30-day backlog are in
 |---|---|---|
 | 1 | Audit, design system, repo, shared layout, homepage | **Done** — see [`docs/week-1-report.md`](docs/week-1-report.md) |
 | 2 | Public pages | **Done** — see [`docs/week-2-report.md`](docs/week-2-report.md) |
-| 3 | API and database | Not started |
+| 3 | API and database | **Done** — see [`docs/week-3-report.md`](docs/week-3-report.md) |
 | 4 | Admin CMS | Not started |
 | 5 | Content migration and release candidate | Not started |
 | 6 | Production launch | Not started |
@@ -24,7 +24,7 @@ The full specification and the 30-day backlog are in
 |---|---|
 | Public site + admin UI | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | API | Node.js 24, Express 5, TypeScript, Zod, Pino |
-| Database | PostgreSQL 17 *(Week 3)* |
+| Database | PostgreSQL 18 |
 | Deployment | Docker Compose, nginx |
 | Tests | Vitest + Supertest (API); Playwright *(Week 5)* |
 
@@ -68,10 +68,23 @@ Run the public site on <http://localhost:3000>:
 npm run dev
 ```
 
-Run the API on <http://localhost:4000>:
+Start a real PostgreSQL 18 (no Docker needed), apply migrations and seeds:
+
+```bash
+npm run db:dev --workspace=@deetech/api
+```
+
+It prints the `DATABASE_URL` to put in `.env`. Then run the API on
+<http://localhost:4000>:
 
 ```bash
 npm run dev:api
+```
+
+Create the first administrator:
+
+```bash
+npm run admin:create --workspace=@deetech/api -- --email you@example.com --name "Your Name"
 ```
 
 Check it is alive:
@@ -104,6 +117,9 @@ Run from the repository root.
 | `npm test` | Vitest suites |
 | `npm run format` / `format:check` | Prettier |
 | `npm run redirects:build` | Regenerates the nginx redirect snippet from `docs/redirects.csv` |
+| `npm run db:dev --workspace=@deetech/api` | Real PostgreSQL 18 on :55432, migrated and seeded |
+| `npm run db:migrate\|db:seed\|db:setup --workspace=@deetech/api` | Against whatever `DATABASE_URL` points at |
+| `npm run admin:create --workspace=@deetech/api` | Creates an admin account |
 | `npm run check` | Everything above, in the order CI runs it |
 
 ## Redirect map
@@ -142,11 +158,18 @@ Two rules hold in both implementations:
   public route.
 - Everything is async, even though today's fixtures are not.
 
-`src/lib/content/fixtures/` holds the current data. Three arrays are
-**deliberately empty** — brands, products, and the About page's team, stats
-and history — because the source material does not exist or contradicts
-itself. Their sections render nothing rather than shipping invented content.
-Each one carries a comment explaining what is needed to turn it on.
+As of Week 3 Day 13 these functions call the Express API and the fixtures are
+gone. Content lives in PostgreSQL.
+
+**The brands and products tables are empty**, and the About page's team, stats
+and history sections still read from `src/lib/content/fixtures/about.ts` with
+empty arrays — because the source material does not exist or contradicts
+itself. Those sections render nothing rather than shipping invented content.
+Each carries a comment explaining what is needed to turn it on.
+
+A list request that cannot reach the API returns empty and a detail returns
+null, rendering as an empty state or a 404. Letting the error propagate would
+turn a brief API restart into a 500 on every page.
 
 ## Conventions
 
@@ -175,6 +198,13 @@ Each one carries a comment explaining what is needed to turn it on.
 - **Docker is not installed on the current development machine**, so
   `docker-compose.yml` and both Dockerfiles have been written but **not yet
   executed**. They must be built and run before the Week 6 deployment work.
+  Local development uses `embedded-postgres` instead, which runs a genuine
+  PostgreSQL 18 binary — see [`database/README.md`](database/README.md). It is
+  a devDependency, pinned exactly because it is published only as a
+  prerelease, and pulls a ~107 MB platform binary on install.
+- **Enquiry notification email is not configured.** Submissions are saved to
+  the database and will appear in the admin list, but nobody is emailed until
+  `SMTP_HOST` and credentials are set.
 - **The brand artwork is raster only.** `assets/brand/Deetech-logo.png` is a
   661x606 PNG. A vector (SVG/AI) source is still outstanding; until it arrives
   the mark cannot be recoloured or scaled cleanly beyond its source resolution.
@@ -189,5 +219,7 @@ Each one carries a comment explaining what is needed to turn it on.
 - [`docs/02-sitemap-and-design-system.md`](docs/02-sitemap-and-design-system.md) — URL scheme, content model, design tokens, accessibility rules
 - [`docs/week-1-report.md`](docs/week-1-report.md) — what Week 1 delivered, what was verified, and what is blocked
 - [`docs/week-2-report.md`](docs/week-2-report.md) — the public pages, the content layer, and what is still blocked
+- [`docs/week-3-report.md`](docs/week-3-report.md) — schema, migrations, public endpoints, enquiries, admin auth
+- [`database/README.md`](database/README.md) — how to run migrations and seeds, and why the schema is shaped the way it is
 - [`docs/redirects.csv`](docs/redirects.csv) — legacy URL map
 - [`docs/audit/legacy-copy/`](docs/audit/legacy-copy) — plain-text extract of every live page, for the Day 21 content migration
