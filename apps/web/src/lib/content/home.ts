@@ -1,9 +1,9 @@
 /**
- * Homepage content, authored during Week 1 Day 5.
+ * Copy that belongs only to the homepage.
  *
- * This module is the temporary stand-in for the CMS. From Week 3 Day 13 the
- * same shapes are returned by `GET /api/v1/services` and friends, and this
- * file is deleted.
+ * Services, brands and products are NOT here — those come from the content
+ * layer (`@/lib/content`) so there is exactly one source of truth for them,
+ * and so the homepage picks up CMS data automatically from Week 3.
  *
  * Everything here is derived from copy that is already live on
  * www.deetechgroup.com (captured in docs/audit/legacy-copy/). Nothing is
@@ -11,46 +11,6 @@
  * corresponding array below is intentionally empty so the section renders
  * nothing rather than shipping filler. See docs/01-wordpress-audit.md.
  */
-
-export interface ServiceSummary {
-  title: string;
-  slug: string;
-  /** Unique per service — the fix for CQ-3, where all six cards shared one line. */
-  summary: string;
-}
-
-export const services: ServiceSummary[] = [
-  {
-    title: "Web Development",
-    slug: "web-development",
-    summary:
-      "Custom websites, web applications and e-commerce platforms, built responsive from the first breakpoint and maintained after launch.",
-  },
-  {
-    title: "Managed IT Services",
-    slug: "managed-it-services",
-    summary:
-      "Proactive monitoring and maintenance that catches problems before they interrupt your working day, with support when something still goes wrong.",
-  },
-  {
-    title: "Network Services",
-    slug: "network-services",
-    summary:
-      "Network design, rollout, security and optimisation — including cloud connectivity — so your sites and staff stay reliably connected.",
-  },
-  {
-    title: "Email Services",
-    slug: "email-services",
-    summary:
-      "Business email hosting, migration, encryption and spam filtering that keep a mission-critical channel available and secure.",
-  },
-  {
-    title: "Web Hosting",
-    slug: "web-hosting",
-    summary:
-      "Shared, cloud and dedicated hosting with backups, monitoring and the headroom to scale when your traffic does.",
-  },
-];
 
 export interface CapabilityPoint {
   title: string;
@@ -102,24 +62,6 @@ export const testimonials: Testimonial[] = [
     role: "MD, Loan4wish",
   },
 ];
-
-export interface FeaturedBrand {
-  name: string;
-  slug: string;
-  relationshipLabel: string;
-  summary: string;
-}
-
-/**
- * EMPTY ON PURPOSE.
- *
- * AnPreD and InfraShield appear nowhere on the current website, so there is
- * no source for their names, positioning or legal relationship to the group.
- * The section below renders nothing while this is empty. Fill it on Day 8,
- * once the owner has supplied the details and — critically — confirmed the
- * correct `relationshipLabel` wording. Do not guess "subsidiary".
- */
-export const featuredBrands: FeaturedBrand[] = [];
 
 /**
  * EMPTY ON PURPOSE.

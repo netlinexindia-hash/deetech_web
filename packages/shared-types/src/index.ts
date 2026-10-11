@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * Shared API contract between the Express API (`@deetech/api`) and the
  * Next.js app (`@deetech/web`).
@@ -44,7 +46,13 @@ export const PRODUCT_LIFECYCLE_LABELS: Record<ProductLifecycle, string> = {
 
 /** Fields every public content type carries for search engines. */
 export interface SeoFields {
+  /**
+   * Page title WITHOUT the site name. The frontend appends " | DeeTech Group"
+   * via the Next.js metadata template, so including it here produces a
+   * doubled suffix. Falls back to the record's own title when null.
+   */
   seoTitle: string | null;
+  /** Meta description. Falls back to the record's summary/excerpt when null. */
   seoDescription: string | null;
 }
 
@@ -62,16 +70,31 @@ export interface Page extends SeoFields, Timestamps {
   publishedAt: string | null;
 }
 
+/** A "why choose us" block, or an item in a service's inclusions list. */
+export interface ServicePoint {
+  title: string;
+  body: string;
+}
+
 export interface Service extends SeoFields, Timestamps {
   id: number;
   title: string;
   slug: string;
   /** One-line card description. Must be unique per service. */
   summary: string;
-  /** Markdown body. */
-  description: string;
+  /**
+   * Lead paragraph of the service page.
+   *
+   * Services use structured fields rather than one free-text Markdown body:
+   * every service page on the legacy site shares the same shape, the template
+   * is fixed, and discrete fields keep the CMS editor honest about it.
+   */
+  intro: string;
+  /** Three "why choose DeeTech Group for X" blocks. */
+  benefits: ServicePoint[];
+  /** What the engagement includes. */
+  inclusions: ServicePoint[];
   imageUrl: string | null;
-  icon: string | null;
   status: PublicationStatus;
   sortOrder: number;
 }
@@ -130,16 +153,70 @@ export interface MediaItem {
   createdAt: string;
 }
 
-/** The payload accepted by `POST /api/v1/enquiries`. */
-export interface EnquiryInput {
-  name: string;
-  email: string;
-  company?: string;
-  phone?: string;
-  subject: string;
-  message: string;
+/**
+ * The payload accepted by `POST /api/v1/enquiries`.
+ *
+ * Defined as a Zod schema, not just a type, so the Next.js server action and
+ * the Express route validate against the identical rules. Client-side
+ * validation is a convenience; this schema is the control, and it runs on the
+ * server on both sides.
+ */
+export const enquirySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Please enter your name.")
+    .max(100, "Name must be 100 characters or fewer."),
+  email: z
+    .email("Please enter a valid email address.")
+    .max(254, "Email must be 254 characters or fewer."),
+  company: z
+    .string()
+    .trim()
+    .max(120, "Company must be 120 characters or fewer.")
+    .optional()
+    .or(z.literal("")),
+  phone: z
+    .string()
+    .trim()
+    .max(32, "Phone must be 32 characters or fewer.")
+    .optional()
+    .or(z.literal("")),
+  subject: z
+    .string()
+    .trim()
+    .min(3, "Please tell us what this is about.")
+    .max(150, "Subject must be 150 characters or fewer."),
+  message: z
+    .string()
+    .trim()
+    .min(20, "Please give us at least a couple of sentences.")
+    .max(5000, "Message must be 5000 characters or fewer."),
   /** Path of the page the form was submitted from, for attribution. */
-  sourcePage?: string;
+  sourcePage: z.string().max(200).optional(),
+  /**
+   * Honeypot. Real users never see this field, so anything in it is a bot.
+   *
+   * Validation is deliberately permissive here. Rejecting a non-empty value
+   * as a *validation error* would hand the bot a distinguishable response it
+   * could tune against, and would show a real user a "check the highlighted
+   * fields" message pointing at a field they cannot see. The caller accepts
+   * the submission silently and discards it instead — see `isLikelySpam`.
+   */
+  website: z.string().max(200).optional(),
+});
+
+export type EnquiryInput = z.infer<typeof enquirySchema>;
+
+/**
+ * True when a submission filled the honeypot field.
+ *
+ * Callers must accept such a submission with a normal success response and
+ * then drop it, so the bot cannot tell rejection from acceptance. Used by
+ * both the Next.js server action and the Express route.
+ */
+export function isLikelySpam(input: EnquiryInput): boolean {
+  return Boolean(input.website && input.website.trim().length > 0);
 }
 
 export type EnquiryStatus = "new" | "read" | "replied" | "spam";

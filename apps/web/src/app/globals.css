@@ -61,11 +61,18 @@
   --color-surface-subtle: #f6f8fb;
   --color-border: #e3e8f0;
 
-  /* Semantic. Coral is demoted from brand colour to danger only — it clashed
-     with the blue/green logo. */
+  /* Semantic.
+     Each one has a light step for decoration (borders, background tints) and
+     a base step dark enough to carry text. The legacy coral #EA5356 is 3.58:1
+     on white and the legacy amber #B7791F is 3.64:1 — both fail AA for text,
+     so both are demoted to the -400 decorative step. */
+  --color-success-400: #38a169;
   --color-success: #2f855a;
-  --color-warning: #b7791f;
-  --color-danger: #ea5356;
+  --color-warning-400: #b7791f;
+  --color-warning: #9b661a;
+  --color-danger-400: #ea5356;
+  --color-danger: #c44548;
+  --color-info-400: #4299e1;
   --color-info: #2b6cb0;
 
   /* Type */
@@ -171,4 +178,138 @@
   @media (width >= 64rem) {
     padding-inline: 2rem;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Article body. Applied to sanitised Markdown output, which is why the rules
+   target bare tags: from Week 4 the HTML comes from the CMS editor and carries
+   no class names of its own.
+   --------------------------------------------------------------------------- */
+
+.prose-article {
+  color: var(--color-body);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+.prose-article > * + * {
+  margin-top: 1.25em;
+}
+
+.prose-article h2 {
+  margin-top: 2.25em;
+  font-size: var(--text-h2);
+  line-height: var(--text-h2--line-height);
+  letter-spacing: var(--text-h2--letter-spacing);
+}
+
+.prose-article h3 {
+  margin-top: 1.75em;
+  font-size: var(--text-h3);
+  line-height: var(--text-h3--line-height);
+}
+
+.prose-article h4 {
+  margin-top: 1.5em;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.prose-article a {
+  color: var(--color-brand-800);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.prose-article a:hover {
+  color: var(--color-brand-900);
+}
+
+.prose-article strong {
+  color: var(--color-ink);
+  font-weight: 650;
+}
+
+.prose-article ul,
+.prose-article ol {
+  padding-left: 1.5em;
+}
+
+.prose-article ul {
+  list-style: disc;
+}
+
+.prose-article ol {
+  list-style: decimal;
+}
+
+.prose-article li + li {
+  margin-top: 0.5em;
+}
+
+.prose-article li::marker {
+  color: var(--color-brand-700);
+}
+
+.prose-article blockquote {
+  border-left: 3px solid var(--color-brand-300);
+  padding-left: 1.25em;
+  color: var(--color-ink);
+  font-style: italic;
+}
+
+.prose-article code {
+  background-color: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.125em 0.375em;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+.prose-article pre {
+  background-color: var(--color-navy-950);
+  color: var(--color-navy-100);
+  border-radius: var(--radius-lg);
+  padding: 1.25em;
+  overflow-x: auto;
+}
+
+.prose-article pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+
+.prose-article hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin-block: 2.5em;
+}
+
+.prose-article img {
+  border-radius: var(--radius-lg);
+  height: auto;
+  max-width: 100%;
+}
+
+.prose-article table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.prose-article th,
+.prose-article td {
+  border: 1px solid var(--color-border);
+  padding: 0.625em 0.875em;
+  text-align: left;
+}
+
+.prose-article th {
+  background-color: var(--color-surface-subtle);
+  color: var(--color-ink);
+  font-weight: 650;
 }

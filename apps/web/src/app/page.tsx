@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
+import { brandRelationshipLabel } from "@deetech/shared-types";
 import { Hero } from "@/components/home/Hero";
 import { Button } from "@/components/ui/Button";
 import { LinkCard } from "@/components/ui/Card";
 import { Section, SectionHeading } from "@/components/ui/Section";
-import {
-  capabilities,
-  featuredBrands,
-  services,
-  stats,
-  testimonials,
-} from "@/lib/content/home";
+import { getBrands, getServices } from "@/lib/content";
+import { capabilities, stats, testimonials } from "@/lib/content/home";
 import { contact, site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -20,7 +16,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const services = await getServices();
+  const featuredBrands = await getBrands();
+
   return (
     <>
       <Hero />
@@ -35,7 +34,7 @@ export default function HomePage() {
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
             <LinkCard
-              key={service.slug}
+              key={service.id}
               href={`/services/${service.slug}`}
               title={service.title}
               description={service.summary}
@@ -112,13 +111,13 @@ export default function HomePage() {
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {featuredBrands.map((brand) => (
               <LinkCard
-                key={brand.slug}
+                key={brand.id}
                 href={`/brands/${brand.slug}`}
                 title={brand.name}
-                description={brand.summary}
+                description={brand.description}
                 footer={
                   <p className="text-sm font-medium text-muted">
-                    {brand.relationshipLabel}
+                    {brandRelationshipLabel(brand.relationshipType)}
                   </p>
                 }
               />

@@ -12,7 +12,7 @@ The full specification and the 30-day backlog are in
 | Week | Focus | State |
 |---|---|---|
 | 1 | Audit, design system, repo, shared layout, homepage | **Done** — see [`docs/week-1-report.md`](docs/week-1-report.md) |
-| 2 | Public pages | Not started |
+| 2 | Public pages | **Done** — see [`docs/week-2-report.md`](docs/week-2-report.md) |
 | 3 | API and database | Not started |
 | 4 | Admin CMS | Not started |
 | 5 | Content migration and release candidate | Not started |
@@ -35,6 +35,7 @@ Flask is out of scope for the MVP, per the plan.
 ```
 apps/
   web/                    Next.js public site and admin UI
+    src/lib/content/      Content layer — swapped for API calls in Week 3
   api/                    Express API
 packages/
   shared-types/           API contract shared by web and api
@@ -128,6 +129,25 @@ flattened onto white because iOS ignores transparency) and
 `apps/web/src/app/favicon.ico` (16/32/48). Re-run it whenever the source
 artwork changes; do not hand-edit the generated files. Requires Pillow.
 
+## The content layer
+
+Every public page reads content through `apps/web/src/lib/content/`, never from
+a fixture directly. Its functions already have the signatures the API will
+have, so on Day 13 their bodies are swapped for `fetch` calls and no page
+component changes.
+
+Two rules hold in both implementations:
+
+- Only `published` records are returned. Draft content must never reach a
+  public route.
+- Everything is async, even though today's fixtures are not.
+
+`src/lib/content/fixtures/` holds the current data. Three arrays are
+**deliberately empty** — brands, products, and the About page's team, stats
+and history — because the source material does not exist or contradicts
+itself. Their sections render nothing rather than shipping invented content.
+Each one carries a comment explaining what is needed to turn it on.
+
 ## Conventions
 
 - **Server-side validation.** Every request body is parsed with a Zod schema.
@@ -168,5 +188,6 @@ artwork changes; do not hand-edit the generated files. Requires Pillow.
 - [`docs/01-wordpress-audit.md`](docs/01-wordpress-audit.md) — content, URL, SEO and content-quality audit of the live WordPress site
 - [`docs/02-sitemap-and-design-system.md`](docs/02-sitemap-and-design-system.md) — URL scheme, content model, design tokens, accessibility rules
 - [`docs/week-1-report.md`](docs/week-1-report.md) — what Week 1 delivered, what was verified, and what is blocked
+- [`docs/week-2-report.md`](docs/week-2-report.md) — the public pages, the content layer, and what is still blocked
 - [`docs/redirects.csv`](docs/redirects.csv) — legacy URL map
 - [`docs/audit/legacy-copy/`](docs/audit/legacy-copy) — plain-text extract of every live page, for the Day 21 content migration
