@@ -224,22 +224,53 @@ published only as a prerelease (`18.4.0-beta.17`), which is why it is pinned
 exactly and confined to development. It pulls a ~107 MB platform binary on
 install — worth noting before adding it to CI.
 
-## Still blocked on the owner
+## Addendum — AnPreD and InfraShield are live
 
-Unchanged. The brands and products tables are empty for the same reason their
-fixtures were:
+The owner supplied <https://anpred.com/> after the week's work was committed,
+which unblocked the longest-running gap in the project.
+
+**AnPreD** is the brand; **InfraShield** is its platform. Both were authored
+into `database/seeds/003_brands_and_products.sql` entirely from AnPreD's own
+site (homepage, `/infrashield`, `/about`) — every claim is one AnPreD makes
+about itself. The logo was cut out of their `logo.png`, which ships with a
+baked-in off-white background; a saturation mask drops it cleanly, and the
+untouched original is kept in `assets/brand/`.
+
+**The relationship wording.** The AnPreD footer reads *"© 2026 AnPreD. Owned
+by Dee Tech Group"*. That establishes ownership but **not** a separate legal
+entity, and the plan forbids "subsidiary" unless the structure supports it —
+so `relationship_type` is `product_brand`, rendering as *"A product brand by
+DeeTech Group"*. If AnPreD is separately incorporated this is one `UPDATE`,
+and there is a test asserting the current value so the change has to be
+deliberate rather than accidental.
+
+Supporting work this needed:
+
+- Brand and product descriptions render **Markdown** through the existing
+  sanitiser, instead of being dumped into a `<p>`.
+- The brand logo renders on the directory card and in the detail sidebar.
+- `src/lib/text.ts` gives card summaries, meta descriptions and JSON-LD
+  plain-text excerpts, so Markdown no longer leaks into a `<meta>` tag.
+- **Bug fixed:** the lifecycle badge used a translucent tint, which takes its
+  contrast from whatever is behind it — **2.4:1 on the navy page header**. It
+  is now a solid fill with white text, legible on any surface.
+
+`/brands`, `/brands/anpred`, `/products`, `/products/infrashield` and the
+homepage brands section all switched themselves on, and the sitemap picked up
+the two new URLs, because each was already reading the content layer and
+gated on whether rows existed.
+
+## Still blocked on the owner
 
 | # | Needed | Turns on |
 |---|---|---|
-| 1 | AnPreD — name, tagline, description, logo, website, docs URL | `/brands`, `/brands/anpred` |
-| 2 | InfraShield — the same, plus how it relates to AnPreD | `/products` |
-| 3 | **The `relationship_type`** for each, from the five allowed values | The relationship wording everywhere |
-| 4 | SMTP provider and credentials | Enquiry notifications actually sending |
-| 5 | Real figures / team roster / founding year | The hidden About sections |
+| 1 | SMTP provider and credentials | Enquiry notifications actually sending |
+| 2 | Confirmation that `product_brand` is right for AnPreD, or that it is separately incorporated | The relationship line on every brand surface |
+| 3 | Real figures / team roster / founding year | The hidden About sections |
+| 4 | Written permission for the four named testimonials | The homepage testimonials |
 
-Items 1–3 are now a single `INSERT` (or a few clicks once Week 4 lands). Item 4
-is the only one that changes behaviour rather than content: enquiries are being
-saved correctly, but nobody is emailed about them yet.
+Item 1 is the only one that changes behaviour rather than content: enquiries
+are being saved correctly, but nobody is emailed about them yet.
 
 ## Next
 

@@ -176,6 +176,15 @@ The plan requires a Brands/Companies directory, an AnPreD profile and a Products
 
 > **Neither "AnPreD" nor "InfraShield" appears anywhere on the current website.** Searching all page content, post content, media filenames and generated CSS returned zero matches.
 
+> **Resolved 2026-10-11.** The owner supplied <https://anpred.com/>. AnPreD is
+> the brand and **InfraShield** is its platform; the AnPreD site's own footer
+> reads *"© 2026 AnPreD. Owned by Dee Tech Group"*. Both were authored into
+> `database/seeds/003_brands_and_products.sql` from that site, and
+> `/brands/anpred` and `/products/infrashield` are live. The one judgement
+> call is recorded there: `relationship_type` is `product_brand`, not
+> `subsidiary`, because "owned by" establishes ownership but not a separate
+> legal entity.
+
 All brand and product content must therefore be **authored from scratch**, not migrated. **[NEEDS ADMIN]** Before Week 2 Day 8–9 the following are needed:
 
 1. AnPreD — full name, one-line positioning, description, logo, website URL, documentation URL, current status.

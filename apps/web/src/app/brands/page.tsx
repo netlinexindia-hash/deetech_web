@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Section } from "@/components/ui/Section";
 import { getBrands, getProducts } from "@/lib/content";
+import { excerpt } from "@/lib/text";
 
 export const metadata: Metadata = {
   title: "Brands & companies",
@@ -38,6 +39,19 @@ export default async function BrandsPage() {
                   key={brand.id}
                   className="group relative flex flex-col rounded-xl border border-border bg-white p-6 shadow-card transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-card-hover"
                 >
+                  {brand.logoUrl ? (
+                    <div className="mb-4 flex h-16 items-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={brand.logoUrl}
+                        alt=""
+                        className="h-full w-auto"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  ) : null}
+
                   <p className="text-xs font-semibold tracking-[0.12em] text-brand-800 uppercase">
                     {brandRelationshipLabel(brand.relationshipType)}
                   </p>
@@ -55,7 +69,11 @@ export default async function BrandsPage() {
                     <p className="mt-1.5 font-medium text-navy-700">{brand.tagline}</p>
                   ) : null}
 
-                  <p className="mt-3 flex-1 text-body">{brand.description}</p>
+                  {/* `description` is Markdown; a card shows a bounded
+                      plain-text excerpt rather than markup in a grid cell. */}
+                  <p className="mt-3 flex-1 text-body">
+                    {excerpt(brand.description, 190)}
+                  </p>
 
                   {count > 0 ? (
                     <p className="mt-5 text-sm text-muted">

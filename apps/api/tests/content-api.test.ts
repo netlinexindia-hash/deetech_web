@@ -128,7 +128,32 @@ describe("GET /services/:slug", () => {
 });
 
 describe("GET /brands and /products", () => {
+  it("return the seeded AnPreD brand and its InfraShield product", async () => {
+    const brands = await request(app).get(`${API_PREFIX}/brands`);
+    expect(brands.status).toBe(200);
+    expect(brands.body.items).toHaveLength(1);
+    expect(brands.body.items[0]).toMatchObject({
+      slug: "anpred",
+      relationshipType: "product_brand",
+      websiteUrl: "https://anpred.com/",
+    });
+
+    const products = await request(app).get(`${API_PREFIX}/products`);
+    expect(products.status).toBe(200);
+    expect(products.body.items).toHaveLength(1);
+    expect(products.body.items[0]).toMatchObject({
+      slug: "infrashield",
+      lifecycle: "available",
+      brandId: brands.body.items[0].id,
+      documentationUrl: "https://anpred.com/documentation",
+    });
+  });
+
   it("return empty lists when nothing is published", async () => {
+    // Reset without re-applying the seeds, so this covers the state the
+    // directories launch in before any brand is published.
+    await db.reset();
+
     const brands = await request(app).get(`${API_PREFIX}/brands`);
     const products = await request(app).get(`${API_PREFIX}/products`);
 
@@ -160,6 +185,7 @@ describe("GET /brands and /products", () => {
     const filtered = await request(app).get(
       `${API_PREFIX}/products?brandId=${brandId}`,
     );
+    // Scoped to this brand, so the seeded InfraShield is correctly excluded.
     expect(filtered.body.items).toHaveLength(1);
     expect(filtered.body.items[0]).toMatchObject({
       slug: "test-product",

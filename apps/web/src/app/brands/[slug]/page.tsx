@@ -10,6 +10,8 @@ import { LinkCard } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Section, SectionHeading } from "@/components/ui/Section";
 import { getBrandBySlug, getBrands, getProductsByBrand } from "@/lib/content";
+import { renderMarkdown } from "@/lib/markdown";
+import { excerpt, firstParagraph } from "@/lib/text";
 import { SITE_URL } from "@/lib/site";
 
 interface Params {
@@ -30,7 +32,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
 
   const title = brand.seoTitle ?? brand.name;
-  const description = brand.seoDescription ?? brand.description.slice(0, 180);
+  const description = brand.seoDescription ?? excerpt(brand.description);
   const canonical = `/brands/${brand.slug}`;
 
   return {
@@ -49,6 +51,7 @@ export default async function BrandDetailPage({ params }: Params) {
   if (!brand) notFound();
 
   const products = await getProductsByBrand(brand.id);
+  const descriptionHtml = await renderMarkdown(brand.description);
 
   // The relationship wording comes from the enum, never hardcoded — it is a
   // statement about company structure and lives in exactly one place.
@@ -58,7 +61,7 @@ export default async function BrandDetailPage({ params }: Params) {
     "@context": "https://schema.org",
     "@type": "Brand",
     name: brand.name,
-    description: brand.description,
+    description: firstParagraph(brand.description),
     ...(brand.websiteUrl ? { url: brand.websiteUrl } : {}),
     ...(brand.logoUrl ? { logo: brand.logoUrl } : {}),
     parentOrganization: {
@@ -90,12 +93,26 @@ export default async function BrandDetailPage({ params }: Params) {
 
       <Section>
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-16">
-          <div className="max-w-prose">
-            <p className="text-lead">{brand.description}</p>
-          </div>
+          <div
+            className="prose-article max-w-prose"
+            dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+          />
 
           <aside>
             <div className="rounded-xl border border-border bg-surface-subtle p-6">
+              {brand.logoUrl ? (
+                <div className="mb-5 flex justify-center rounded-lg bg-white p-5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={brand.logoUrl}
+                    alt={`${brand.name} logo`}
+                    className="h-24 w-auto"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              ) : null}
+
               <h2 className="text-sm font-semibold tracking-[0.12em] text-navy-900 uppercase">
                 At a glance
               </h2>

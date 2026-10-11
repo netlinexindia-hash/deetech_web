@@ -6,6 +6,7 @@ import { LinkCard } from "@/components/ui/Card";
 import { Section, SectionHeading } from "@/components/ui/Section";
 import { getBrands, getServices } from "@/lib/content";
 import { capabilities, stats, testimonials } from "@/lib/content/home";
+import { excerpt } from "@/lib/text";
 import { contact, site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -114,7 +115,7 @@ export default async function HomePage() {
                 key={brand.id}
                 href={`/brands/${brand.slug}`}
                 title={brand.name}
-                description={brand.description}
+                description={excerpt(brand.description, 170)}
                 footer={
                   <p className="text-sm font-medium text-muted">
                     {brandRelationshipLabel(brand.relationshipType)}

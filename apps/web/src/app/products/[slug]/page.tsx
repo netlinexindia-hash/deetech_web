@@ -8,6 +8,7 @@ import { LifecycleBadge } from "@/components/ui/LifecycleBadge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Section } from "@/components/ui/Section";
 import { getBrands, getProductBySlug, getProducts } from "@/lib/content";
+import { renderMarkdown } from "@/lib/markdown";
 import { SITE_URL } from "@/lib/site";
 
 interface Params {
@@ -46,6 +47,7 @@ export default async function ProductDetailPage({ params }: Params) {
 
   if (!product) notFound();
 
+  const descriptionHtml = await renderMarkdown(product.description);
   const brands = await getBrands();
   const brand =
     product.brandId !== null
@@ -98,9 +100,10 @@ export default async function ProductDetailPage({ params }: Params) {
 
       <Section>
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-16">
-          <div className="max-w-prose">
-            <p className="text-lead">{product.description}</p>
-          </div>
+          <div
+            className="prose-article max-w-prose"
+            dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+          />
 
           <aside>
             <div className="rounded-xl border border-border bg-surface-subtle p-6">

@@ -263,6 +263,53 @@ describe("seeds", () => {
     expect(first.rows[0]!.c).toBe(5);
   });
 
+  it("publish AnPreD as a product brand, with InfraShield linked to it", async () => {
+    await db.applySeeds();
+
+    const brands = await db.pool.query<{
+      id: number;
+      slug: string;
+      relationship_type: string;
+      status: string;
+      website_url: string;
+      logo_url: string;
+    }>(`SELECT id, slug, relationship_type, status, website_url, logo_url FROM brands`);
+
+    expect(brands.rows).toHaveLength(1);
+    expect(brands.rows[0]).toMatchObject({
+      slug: "anpred",
+      status: "published",
+      website_url: "https://anpred.com/",
+      logo_url: "/brand/anpred-logo.png",
+    });
+
+    // Guards the legal wording. Switching this to "subsidiary" is a
+    // deliberate act that should fail this test and be re-approved, not
+    // something that drifts in.
+    expect(brands.rows[0]!.relationship_type).toBe("product_brand");
+
+    const products = await db.pool.query<{
+      slug: string;
+      lifecycle: string;
+      brand_id: number;
+      documentation_url: string;
+      download_url: string;
+    }>(
+      `SELECT slug, lifecycle, brand_id, documentation_url, download_url FROM products`,
+    );
+
+    expect(products.rows).toHaveLength(1);
+    expect(products.rows[0]).toMatchObject({
+      slug: "infrashield",
+      lifecycle: "available",
+      documentation_url: "https://anpred.com/documentation",
+      download_url: "https://anpred.com/download",
+    });
+    // The seed resolves brand_id by slug rather than hardcoding an id,
+    // because the id depends on insert order.
+    expect(products.rows[0]!.brand_id).toBe(brands.rows[0]!.id);
+  });
+
   it("publish five services with unique summaries and populated detail", async () => {
     await db.applySeeds();
     const { rows } = await db.pool.query<{
