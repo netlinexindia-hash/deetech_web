@@ -5,16 +5,20 @@
 -- is one AnPreD makes about itself.
 --
 -- RELATIONSHIP TO THE GROUP
--- The AnPreD site footer reads: "© 2026 AnPreD. Owned by Dee Tech Group",
--- linking to www.deetechgroup.com. That establishes ownership, but it does
--- NOT establish that AnPreD is a separately incorporated company — and the
--- project plan is explicit that "subsidiary" may only be used when the legal
--- structure supports it. `product_brand` is therefore the accurate and
--- conservative choice; it renders as "A product brand by DeeTech Group".
+-- CONFIRMED BY THE OWNER, 2026-10-11: "AnPreD is a product of DeeTech Group."
 --
--- If AnPreD IS separately incorporated, this is a one-field change:
---   UPDATE brands SET relationship_type = 'subsidiary' WHERE slug = 'anpred';
--- Do that only with the ownership structure confirmed in writing.
+-- `product_brand` is therefore correct and final. It renders as "A product
+-- brand by DeeTech Group" through `brandRelationshipLabel`, which is the only
+-- place that wording exists.
+--
+-- Corroborating evidence, kept because it is what the public can check: the
+-- AnPreD site footer reads "(c) 2026 AnPreD. Owned by Dee Tech Group" and
+-- links to www.deetechgroup.com.
+--
+-- Do NOT change this to `subsidiary`. "Subsidiary" asserts a separately
+-- incorporated company, which the owner has not stated and which the project
+-- plan forbids claiming without the legal structure to support it. There is a
+-- test on this value, so a change has to be deliberate.
 --
 -- Idempotent, like every seed: re-running updates the rows in place.
 

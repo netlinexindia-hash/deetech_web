@@ -4,8 +4,8 @@
  *
  * AnPreD and its InfraShield platform were seeded on 2026-10-11 from
  * https://anpred.com/ — see `database/seeds/003_brands_and_products.sql`,
- * which records where each claim came from and why `relationship_type` is
- * `product_brand` rather than `subsidiary`.
+ * which records where each claim came from. Its `relationship_type` is
+ * `product_brand` — confirmed by the owner on 2026-10-11.
  *
  * To add another brand, either add it to that seed file or use the admin CMS
  * once Week 4 lands; the CMS validates the relationship type and the slug.

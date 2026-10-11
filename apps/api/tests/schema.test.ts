@@ -283,9 +283,10 @@ describe("seeds", () => {
       logo_url: "/brand/anpred-logo.png",
     });
 
-    // Guards the legal wording. Switching this to "subsidiary" is a
-    // deliberate act that should fail this test and be re-approved, not
-    // something that drifts in.
+    // Guards the legal wording. The owner confirmed on 2026-10-11 that
+    // AnPreD is a product of DeeTech Group, so this value is settled —
+    // changing it to "subsidiary" would assert a separately incorporated
+    // company and must fail here rather than drift in.
     expect(brands.rows[0]!.relationship_type).toBe("product_brand");
 
     const products = await db.pool.query<{

@@ -180,17 +180,19 @@ The plan requires a Brands/Companies directory, an AnPreD profile and a Products
 > the brand and **InfraShield** is its platform; the AnPreD site's own footer
 > reads *"© 2026 AnPreD. Owned by Dee Tech Group"*. Both were authored into
 > `database/seeds/003_brands_and_products.sql` from that site, and
-> `/brands/anpred` and `/products/infrashield` are live. The one judgement
-> call is recorded there: `relationship_type` is `product_brand`, not
-> `subsidiary`, because "owned by" establishes ownership but not a separate
-> legal entity.
+> `/brands/anpred` and `/products/infrashield` are live.
+>
+> The relationship wording is settled: the owner confirmed on 2026-10-11 that
+> **"AnPreD is a product of DeeTech Group"**, so `relationship_type` is
+> `product_brand`, rendering as "A product brand by DeeTech Group". Items 1–4
+> below are closed.
 
-All brand and product content must therefore be **authored from scratch**, not migrated. **[NEEDS ADMIN]** Before Week 2 Day 8–9 the following are needed:
+All brand and product content therefore had to be **authored from scratch**, not migrated. What was needed, and how each was resolved:
 
-1. AnPreD — full name, one-line positioning, description, logo, website URL, documentation URL, current status.
-2. InfraShield — same, plus its relationship to AnPreD (product of AnPreD? sibling brand?).
-3. The **legal relationship wording**. The plan is explicit: use "subsidiary company" only if ownership and legal structure support it. If DeeTech Group is a proprietorship and AnPreD is a product brand, the site must say "A product brand by DeeTech Group" or similar. Pick the wording now so it is applied consistently.
-4. Any additional brands or companies to list at launch.
+1. ~~AnPreD — full name, positioning, description, logo, website URL, documentation URL, status.~~ **Resolved** from anpred.com.
+2. ~~InfraShield — same, plus its relationship to AnPreD.~~ **Resolved**: InfraShield is AnPreD's platform, so it is a product with `brand_id` pointing at AnPreD.
+3. ~~The **legal relationship wording**.~~ **Resolved**: `product_brand` — "A product brand by DeeTech Group", confirmed by the owner 2026-10-11.
+4. Any additional brands or companies to list at launch — **still open**, but nothing is blocked on it; adding one is a row.
 
 ## 7. Security observations on the current site
 

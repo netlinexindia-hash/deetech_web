@@ -17,8 +17,12 @@ export type PublicationStatus = "draft" | "published";
  * How a brand relates to DeeTech Group.
  *
  * This is deliberately an enum rather than free text so the legal wording
- * lives in exactly one place (`brandRelationshipLabel`). Do not select
- * `subsidiary` unless the ownership structure supports it in writing.
+ * lives in exactly one place (`brandRelationshipLabel`).
+ *
+ * `subsidiary` asserts a separately incorporated company. Do not select it
+ * for a brand unless that is true and documented — the project plan forbids
+ * claiming it otherwise. AnPreD is `product_brand`, confirmed by the owner
+ * on 2026-10-11.
  */
 export type BrandRelationshipType =
   "product_brand" | "division" | "subsidiary" | "partner" | "portfolio_company";

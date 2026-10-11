@@ -236,13 +236,13 @@ about itself. The logo was cut out of their `logo.png`, which ships with a
 baked-in off-white background; a saturation mask drops it cleanly, and the
 untouched original is kept in `assets/brand/`.
 
-**The relationship wording.** The AnPreD footer reads *"© 2026 AnPreD. Owned
-by Dee Tech Group"*. That establishes ownership but **not** a separate legal
-entity, and the plan forbids "subsidiary" unless the structure supports it —
-so `relationship_type` is `product_brand`, rendering as *"A product brand by
-DeeTech Group"*. If AnPreD is separately incorporated this is one `UPDATE`,
-and there is a test asserting the current value so the change has to be
-deliberate rather than accidental.
+**The relationship wording — settled.** The AnPreD footer reads *"© 2026
+AnPreD. Owned by Dee Tech Group"*, which establishes ownership but not a
+separate legal entity, so `product_brand` was the conservative reading. The
+owner then confirmed it directly: **"AnPreD is a product of DeeTech Group."**
+`relationship_type` is `product_brand`, rendering as *"A product brand by
+DeeTech Group"*. A test asserts the value, so changing it to `subsidiary` —
+which would assert a separately incorporated company — has to be deliberate.
 
 Supporting work this needed:
 
@@ -265,9 +265,8 @@ gated on whether rows existed.
 | # | Needed | Turns on |
 |---|---|---|
 | 1 | SMTP provider and credentials | Enquiry notifications actually sending |
-| 2 | Confirmation that `product_brand` is right for AnPreD, or that it is separately incorporated | The relationship line on every brand surface |
-| 3 | Real figures / team roster / founding year | The hidden About sections |
-| 4 | Written permission for the four named testimonials | The homepage testimonials |
+| 2 | Real figures / team roster / founding year | The hidden About sections |
+| 3 | Written permission for the four named testimonials | The homepage testimonials |
 
 Item 1 is the only one that changes behaviour rather than content: enquiries
 are being saved correctly, but nobody is emailed about them yet.

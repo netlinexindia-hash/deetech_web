@@ -92,7 +92,9 @@ partner             -> "A DeeTech Group partner"
 portfolio_company   -> "Part of the DeeTech Group portfolio"
 ```
 
-The display string is derived from the enum in one shared helper. Nothing hardcodes "subsidiary" in a template. **`subsidiary` is not to be selected until the ownership structure is confirmed in writing.**
+The display string is derived from the enum in one shared helper. Nothing hardcodes "subsidiary" in a template.
+
+**`subsidiary` asserts a separately incorporated company** and must not be selected without the legal structure to support it. AnPreD is `product_brand`, confirmed by the owner on 2026-10-11 ("AnPreD is a product of DeeTech Group").
 
 ### `products`
 
@@ -277,8 +279,8 @@ The rebuild follows the legacy site's **information architecture** (hero, servic
 
 | # | Decision | Needed by |
 |---|---|---|
-| 1 | AnPreD and InfraShield: names, descriptions, logos, URLs, lifecycle status | Day 8 |
-| 2 | The legal `relationship_type` for AnPreD | Day 8 |
+| ~~1~~ | ~~AnPreD and InfraShield: names, descriptions, logos, URLs, lifecycle status~~ — **resolved 2026-10-11** from anpred.com | — |
+| ~~2~~ | ~~The legal `relationship_type` for AnPreD~~ — **resolved 2026-10-11**: `product_brand` | — |
 | 3 | Real figures for the stats band, or confirm it stays hidden | Day 21 |
 | 4 | Keep or drop the "Web Design" service | Day 21 |
 | 5 | Written permission for the four named testimonials and any partner logos | Day 21 |
