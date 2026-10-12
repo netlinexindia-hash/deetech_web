@@ -167,10 +167,18 @@ export class DuplicateSummaryError extends Error {
   }
 }
 
-/** Postgres unique-violation. */
+/** Postgres unique_violation. */
 const UNIQUE_VIOLATION = "23505";
-/** Postgres foreign-key violation. */
+/**
+ * Postgres raises two different codes for a blocked delete, and both have to
+ * be handled:
+ *   23503 foreign_key_violation — NO ACTION, the default
+ *   23001 restrict_violation    — ON DELETE RESTRICT, which is what
+ *                                 products.brand_id uses
+ * Checking only 23503 turned "this brand still has products" into a 500.
+ */
 const FK_VIOLATION = "23503";
+const RESTRICT_VIOLATION = "23001";
 
 export class ForeignKeyError extends Error {
   constructor(message: string) {
@@ -187,7 +195,7 @@ function translate(error: unknown, slug?: string): never {
     if (constraint.includes("summary")) throw new DuplicateSummaryError();
     if (slug) throw new UniqueSlugError(slug);
   }
-  if (code === FK_VIOLATION) {
+  if (code === FK_VIOLATION || code === RESTRICT_VIOLATION) {
     if (constraint.includes("brand")) {
       throw new ForeignKeyError(
         "That brand no longer exists. Pick another, or leave the brand empty.",

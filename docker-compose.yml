@@ -19,9 +19,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-deetech}
       POSTGRES_USER: ${POSTGRES_USER:-deetech}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
-      # Slightly stricter than the default; matters once this image is reused
-      # on the VPS.
-      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      # Encoding and collation are pinned rather than inherited from the
+      # image's locale, so every environment agrees. The embedded Postgres
+      # used for local development pins the same values — without it, initdb
+      # picked up the Windows locale and produced a WIN1252 cluster that
+      # rejected characters production accepts.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --encoding=UTF8 --no-locale"
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:

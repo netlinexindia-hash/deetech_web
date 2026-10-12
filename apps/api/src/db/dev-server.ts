@@ -44,6 +44,21 @@ const pg = new EmbeddedPostgres({
   // Keeps the cluster between runs, so seeded content and any local edits
   // survive a restart.
   persistent: true,
+  /**
+   * Pin the cluster to UTF-8.
+   *
+   * Without this, initdb inherits the host locale — on Windows that is
+   * WIN1252, so the dev database silently rejects any character outside
+   * Latin-1 while production (postgres:17-alpine) accepts it. For a business
+   * in India that means a rupee sign or Devanagari text would work in
+   * production and fail here, which is the worst way round to find out.
+   *
+   * `--no-locale` means locale C, i.e. byte-order collation: deterministic,
+   * identical on every platform, and the one locale name that is valid on
+   * both Windows and Alpine. (`C.UTF-8` is not a valid locale name on
+   * Windows — initdb rejects it.)
+   */
+  initdbFlags: ["--encoding=UTF8", "--no-locale"],
 });
 
 /**

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/layout/Logo";
 import { Container } from "@/components/ui/Section";
+import { getPageBySlug } from "@/lib/content";
 import { contact, footerNav, site } from "@/lib/site";
 
 function FooterColumn({
@@ -31,8 +32,30 @@ function FooterColumn({
   );
 }
 
-export function Footer() {
+/**
+ * Legal links are rendered only for pages that are actually published.
+ *
+ * The privacy policy and terms are seeded as drafts, because they are
+ * marked "pending legal review" and must not go live just by being seeded.
+ * Linking to them unconditionally would put two 404s in the footer of every
+ * page until somebody remembers to publish them. This way the link appears
+ * the moment the page does, and the launch checklist has one less thing on
+ * it that only shows up as a visitor complaint.
+ */
+async function publishedLegalLinks() {
+  const pages = await Promise.all(
+    footerNav.legal.map(async (item) => {
+      const slug = item.href.replace(/^\//, "");
+      const page = await getPageBySlug(slug);
+      return page ? { href: item.href, label: page.title } : null;
+    }),
+  );
+  return pages.filter((page): page is { href: string; label: string } => page !== null);
+}
+
+export async function Footer() {
   const year = new Date().getFullYear();
+  const legalLinks = await publishedLegalLinks();
 
   return (
     <footer className="mt-auto bg-navy-950 text-navy-200">
@@ -97,7 +120,7 @@ export function Footer() {
             &copy; {year} {site.legalName}. All rights reserved.
           </p>
           <ul className="flex flex-wrap gap-x-6 gap-y-2">
-            {footerNav.legal.map((item) => (
+            {legalLinks.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}

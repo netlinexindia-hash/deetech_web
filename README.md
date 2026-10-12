@@ -15,7 +15,7 @@ The full specification and the 30-day backlog are in
 | 2 | Public pages | **Done** — see [`docs/week-2-report.md`](docs/week-2-report.md) |
 | 3 | API and database | **Done** — see [`docs/week-3-report.md`](docs/week-3-report.md) |
 | 4 | Admin CMS | **Done** — see [`docs/week-4-report.md`](docs/week-4-report.md) |
-| 5 | Content migration and release candidate | Not started |
+| 5 | Content migration and release candidate | **Done** — see [`docs/week-5-report.md`](docs/week-5-report.md) |
 | 6 | Production launch | Not started |
 
 ## Stack
@@ -122,6 +122,7 @@ Run from the repository root.
 | `npm run db:dev --workspace=@deetech/api` | Real PostgreSQL 18 on :55432, migrated and seeded |
 | `npm run db:migrate\|db:seed\|db:setup --workspace=@deetech/api` | Against whatever `DATABASE_URL` points at |
 | `npm run admin:create --workspace=@deetech/api` | Creates an admin account |
+| `node infrastructure/deployment/verify-redirects.mjs` | Checks every legacy URL has a rule and every destination resolves |
 | `npm run check` | Everything above, in the order CI runs it |
 
 ## Redirect map
@@ -194,6 +195,23 @@ Field layout for the CMS forms is described once in
 it. That registry is presentation only — validation lives in the shared Zod
 schemas.
 
+## Backup and restore
+
+```bash
+DATABASE_URL=... infrastructure/deployment/backup.sh /path/off/this/server
+RESTORE_CONFIRM=<dbname> DATABASE_URL=... infrastructure/deployment/restore.sh dump.sql.gz media.tar.gz
+```
+
+A Docker volume is not a backup — write to somewhere off the VPS. The backup
+verifies its own output and deletes a truncated dump rather than leaving one
+that looks valid. The restore refuses to run unless `RESTORE_CONFIRM` matches
+the target database name, and verifies the archive before touching anything.
+
+**These scripts have not been executed yet** — they wrap `pg_dump` and
+`psql`, which the embedded Postgres used for development does not ship. Run
+them for real against staging before cutover. The round-trip guarantee they
+exist to provide is covered by `apps/api/tests/backup-restore.test.ts`.
+
 ## Conventions
 
 - **Server-side validation.** Every request body is parsed with a Zod schema.
@@ -225,6 +243,9 @@ schemas.
   PostgreSQL 18 binary — see [`database/README.md`](database/README.md). It is
   a devDependency, pinned exactly because it is published only as a
   prerelease, and pulls a ~107 MB platform binary on install.
+- **The privacy policy and terms are drafts pending legal review.** They are
+  seeded unpublished, and the footer links to a legal page only once it is
+  published, so nothing links to a 404 in the meantime.
 - **Enquiry notification email is not configured.** Submissions are saved to
   the database and appear in the admin inbox, but nobody is emailed until
   `SMTP_HOST` and credentials are set.
@@ -250,6 +271,7 @@ schemas.
 - [`docs/week-2-report.md`](docs/week-2-report.md) — the public pages, the content layer, and what is still blocked
 - [`docs/week-3-report.md`](docs/week-3-report.md) — schema, migrations, public endpoints, enquiries, admin auth
 - [`docs/week-4-report.md`](docs/week-4-report.md) — the admin CMS, media uploads, and the build-time API constraint
+- [`docs/week-5-report.md`](docs/week-5-report.md) — legal pages, redirect verification, permission and email tests, backup/restore
 - [`database/README.md`](database/README.md) — how to run migrations and seeds, and why the schema is shaped the way it is
 - [`docs/redirects.csv`](docs/redirects.csv) — legacy URL map
 - [`docs/audit/legacy-copy/`](docs/audit/legacy-copy) — plain-text extract of every live page, for the Day 21 content migration

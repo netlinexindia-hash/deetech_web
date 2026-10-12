@@ -275,19 +275,40 @@ describe("GET /blog/all", () => {
 });
 
 describe("GET /pages/:slug", () => {
+  // Slugs the seeds do not use, so these test the route rather than the
+  // seeded legal pages.
   it("returns a published page", async () => {
     await db.pool.query(
       `INSERT INTO pages (title, slug, body, status, published_at)
-       VALUES ('Privacy policy','privacy-policy','Body text','published', now())`,
+       VALUES ('A published page','a-published-page','Body text','published', now())`,
     );
-    const res = await request(app).get(`${API_PREFIX}/pages/privacy-policy`);
+    const res = await request(app).get(`${API_PREFIX}/pages/a-published-page`);
     expect(res.status).toBe(200);
-    expect(res.body.title).toBe("Privacy policy");
+    expect(res.body.title).toBe("A published page");
   });
 
   it("404s for a draft page", async () => {
-    await db.pool.query(`INSERT INTO pages (title, slug) VALUES ('Terms','terms')`);
-    const res = await request(app).get(`${API_PREFIX}/pages/terms`);
+    await db.pool.query(
+      `INSERT INTO pages (title, slug) VALUES ('A draft page','a-draft-page')`,
+    );
+    const res = await request(app).get(`${API_PREFIX}/pages/a-draft-page`);
     expect(res.status).toBe(404);
+  });
+
+  it("does not expose the seeded legal pages until they are published", async () => {
+    // 004_legal_pages.sql seeds them as drafts on purpose — they are marked
+    // "pending legal review" and must not go live by being seeded.
+    for (const slug of ["privacy-policy", "terms"]) {
+      const res = await request(app).get(`${API_PREFIX}/pages/${slug}`);
+      expect(res.status, `${slug} should not be public yet`).toBe(404);
+    }
+
+    const { rows } = await db.pool.query<{ slug: string; status: string }>(
+      `SELECT slug, status FROM pages WHERE slug IN ('privacy-policy','terms') ORDER BY slug`,
+    );
+    expect(rows).toEqual([
+      { slug: "privacy-policy", status: "draft" },
+      { slug: "terms", status: "draft" },
+    ]);
   });
 });

@@ -241,6 +241,40 @@ describe("jsonb shape guard", () => {
   });
 });
 
+describe("text encoding", () => {
+  /**
+   * The cluster is pinned to UTF-8 in the test harness and in
+   * docker-compose. It was not: initdb inherited the host locale, which on
+   * Windows is WIN1252, so the development database silently rejected any
+   * character outside Latin-1 while production accepted it. For a business
+   * in India a rupee sign or Devanagari text is entirely ordinary content.
+   */
+  it("is UTF-8, not the host locale", async () => {
+    const { rows } = await db.pool.query<{ encoding: string }>(
+      `SELECT current_setting('server_encoding') AS encoding`,
+    );
+    expect(rows[0]!.encoding).toBe("UTF8");
+  });
+
+  it.each([
+    ["a rupee amount", "₹1,20,000"],
+    ["Devanagari", "डीटेक ग्रुप"],
+    ["an em dash", "one — two"],
+    ["curly quotes", "“quoted”"],
+    ["a warning sign", "⚠ review before launch"],
+  ])("stores and returns %s unchanged", async (_label, value) => {
+    await db.pool.query(
+      `INSERT INTO pages (title, slug, body) VALUES ($1, 'encoding-check', $1)`,
+      [value],
+    );
+    const { rows } = await db.pool.query<{ title: string; body: string }>(
+      `SELECT title, body FROM pages WHERE slug = 'encoding-check'`,
+    );
+    expect(rows[0]!.title).toBe(value);
+    expect(rows[0]!.body).toBe(value);
+  });
+});
+
 describe("migration runner", () => {
   it("records every applied migration with a checksum", async () => {
     const { rows } = await db.pool.query<{ name: string; checksum: string }>(
