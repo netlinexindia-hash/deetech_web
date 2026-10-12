@@ -584,6 +584,10 @@ cutover. This is the real rollback and it costs almost nothing to keep.
 - **`backup.sh` and `restore.sh` must run on the host with Docker
   available**, not with a `DATABASE_URL` pointing at `127.0.0.1:5432`. The
   database publishes no port; they work by finding the container.
+- **The seed SQL is baked into the API image.** `cli.js seed` reads
+  `database/seeds/` from inside the container, not from the checkout, so
+  editing a seed and re-running it changes nothing until the image is
+  rebuilt. Pull, deploy (which rebuilds), *then* re-seed — in that order.
 - **Editing `docs/redirects.csv` is not enough** — regenerate the snippet and
   redeploy. CI fails if they drift.
 - **The write schemas are validated twice**, by the server action and again
