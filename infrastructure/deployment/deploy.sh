@@ -110,17 +110,53 @@ fi
 log "2/7  Starting the database"
 # ---------------------------------------------------------------------------
 "${COMPOSE[@]}" up -d db
+
+# Waits on the container's HEALTH status, not on pg_isready alone.
+#
+# pg_isready is not sufficient on a first deploy. The postgres image runs
+# initdb against an empty volume and starts a temporary server to apply the
+# init scripts, then shuts it down and starts the real one. pg_isready
+# answers during that window, so a loop watching only pg_isready proceeds
+# while the socket is about to disappear — and the migration in step 3 then
+# fails against a server that is restarting. Observed on exactly that path:
+# pg_isready reported ready after two seconds, and psql immediately after
+# got "No such file or directory" on the socket.
+#
+# The healthcheck in docker-compose.yml has a start_period, so it does not
+# report healthy until the real server is accepting connections.
+DB_ID="$("${COMPOSE[@]}" ps -q db)"
+[ -n "$DB_ID" ] || fail "the db container did not start"
+
 echo -n "    waiting for postgres"
+DB_READY=""
 for _ in $(seq 1 "$HEALTH_TIMEOUT"); do
-  if "${COMPOSE[@]}" exec -T db pg_isready -q \
-       -U "${POSTGRES_USER:-deetech}" -d "${POSTGRES_DB:-deetech}" 2>/dev/null; then
-    echo " — ready"; break
-  fi
-  echo -n "."; sleep 1
+  HEALTH="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+    "$DB_ID" 2>/dev/null || echo unknown)"
+  case "$HEALTH" in
+    healthy)
+      DB_READY=yes; echo " — healthy"; break ;;
+    none)
+      # No healthcheck defined: fall back to pg_isready, and require two
+      # consecutive successes so the initdb window is not mistaken for ready.
+      if "${COMPOSE[@]}" exec -T db pg_isready -q \
+           -U "${POSTGRES_USER:-deetech}" -d "${POSTGRES_DB:-deetech}" </dev/null 2>/dev/null; then
+        sleep 2
+        if "${COMPOSE[@]}" exec -T db pg_isready -q \
+             -U "${POSTGRES_USER:-deetech}" -d "${POSTGRES_DB:-deetech}" </dev/null 2>/dev/null; then
+          DB_READY=yes; echo " — ready"; break
+        fi
+      fi ;;
+  esac
+  echo -n "."; sleep 2
 done
+
+[ -n "$DB_READY" ] || fail "postgres did not become ready within $((HEALTH_TIMEOUT * 2))s"
+
+# Belt and braces: healthy should mean connectable, so prove it before
+# running a migration against it.
 "${COMPOSE[@]}" exec -T db pg_isready -q \
-  -U "${POSTGRES_USER:-deetech}" -d "${POSTGRES_DB:-deetech}" \
-  || fail "postgres did not become ready within ${HEALTH_TIMEOUT}s"
+  -U "${POSTGRES_USER:-deetech}" -d "${POSTGRES_DB:-deetech}" </dev/null \
+  || fail "the db container reports healthy but is not accepting connections"
 
 # ---------------------------------------------------------------------------
 log "3/7  Building the API image and running migrations"
@@ -128,7 +164,7 @@ log "3/7  Building the API image and running migrations"
 "${COMPOSE[@]}" build api
 # `run --rm` so migrations execute in a throwaway container with the new
 # code, without the API serving yet.
-"${COMPOSE[@]}" run --rm --no-deps api node apps/api/dist/db/cli.js migrate \
+"${COMPOSE[@]}" run --rm --no-deps -T api node apps/api/dist/db/cli.js migrate </dev/null \
   || fail "migrations failed — nothing was swapped in, the old version is still serving"
 
 # ---------------------------------------------------------------------------
@@ -222,7 +258,7 @@ echo "    building against api at $API_BUILD_IP"
 # exactly 8 pages and no detail pages.
 log "     verifying the build actually picked up content"
 DETAIL_PAGES="$(
-  "${COMPOSE[@]}" run --rm --no-deps --entrypoint sh web -c \
+  "${COMPOSE[@]}" run --rm --no-deps -T --entrypoint sh web -c \
     'find apps/web/.next/server/app -path "*/services/*.html" 2>/dev/null | wc -l' \
     | tr -cd '0-9'
 )"
@@ -256,7 +292,8 @@ log "7/7  Reloading nginx"
 # in place.
 if [ "$DEPLOY_MODE" = "container-nginx" ]; then
   "${COMPOSE[@]}" up -d nginx
-  "${COMPOSE[@]}" exec -T nginx nginx -t </dev/null     || fail "the nginx config is invalid; it was NOT reloaded"
+  "${COMPOSE[@]}" exec -T nginx nginx -t </dev/null \
+    || fail "the nginx config is invalid; it was NOT reloaded"
   "${COMPOSE[@]}" exec -T nginx nginx -s reload </dev/null
 else
   # nginx is on the host and is not managed by this script — it is not
