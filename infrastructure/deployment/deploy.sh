@@ -127,15 +127,57 @@ done
 # ---------------------------------------------------------------------------
 log "5/7  Building the web image (the API must be reachable for this)"
 # ---------------------------------------------------------------------------
-# The build joins the application network (build.network in the prod
-# overlay) so it resolves `api` by Docker DNS. Host networking would not
-# work: the API has no published port in production. Steps 2 and 4 created
-# this network, which is why the build comes after them.
-docker network inspect deetech_net >/dev/null 2>&1 \
-  || fail "the deetech_net network is missing; the API should have created it"
+# `next build` prerenders content by calling the API, so the build needs to
+# reach a service that has no published port. Getting there takes two
+# things, and neither is obvious:
+#
+#   1. A buildx builder attached to deetech_net. `build.network` in the
+#      compose file does NOT work — that is a classic-builder feature and
+#      buildkit rejects it outright. A builder created with
+#      `--driver-opt network=deetech_net` runs its RUN steps in the builder
+#      container's own network namespace, which is on the network.
+#
+#   2. The API's address in /etc/hosts, via build.extra_hosts. Being on the
+#      network is not enough by itself: buildkit replaces resolv.conf inside
+#      RUN sandboxes with public DNS, so Docker's embedded resolver at
+#      127.0.0.11 never sees the query and `api` does not resolve.
+#
+# Steps 2 and 4 created the network and the API container, which is why this
+# comes after them.
+docker network inspect deetech_net >/dev/null 2>&1   || fail "the deetech_net network is missing; the API should have created it"
 
-"${COMPOSE[@]}" build web \
-  || fail "the web build failed; the previous version is still serving"
+BUILDER=deetech-builder
+BUILDER_CONTAINER="buildx_buildkit_${BUILDER}0"
+
+builder_on_network() {
+  docker inspect -f '{{range $net, $_ := .NetworkSettings.Networks}}{{$net}} {{end}}'     "$BUILDER_CONTAINER" 2>/dev/null | tr ' ' '
+' | grep -qx deetech_net
+}
+
+if ! docker buildx inspect "$BUILDER" >/dev/null 2>&1; then
+  echo "    creating the $BUILDER buildx builder, attached to deetech_net"
+  docker buildx create --name "$BUILDER" --driver docker-container     --driver-opt network=deetech_net --bootstrap >/dev/null     || fail "could not create the $BUILDER buildx builder"
+elif ! builder_on_network; then
+  # The network was recreated under a builder that still remembers the old
+  # one. Reconnecting is enough, and it keeps the build cache.
+  echo "    reattaching $BUILDER to deetech_net"
+  docker start "$BUILDER_CONTAINER" >/dev/null 2>&1 || true
+  docker network connect deetech_net "$BUILDER_CONTAINER" 2>/dev/null     || fail "could not attach $BUILDER to deetech_net"
+fi
+
+builder_on_network || fail "$BUILDER is not attached to deetech_net"
+
+# Resolved now rather than hardcoded: the address changes whenever the
+# container is recreated, which step 4 just did.
+API_BUILD_IP="$(
+  docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'     "$("${COMPOSE[@]}" ps -q api)" 2>/dev/null
+)"
+[ -n "${API_BUILD_IP:-}" ]   || fail "could not determine the API container's address for the build"
+export API_BUILD_IP
+export BUILDX_BUILDER="$BUILDER"
+echo "    building against api at $API_BUILD_IP"
+
+"${COMPOSE[@]}" build web   || fail "the web build failed; the previous version is still serving"
 
 # A build that could not reach the API produces an EMPTY site and still
 # exits 0, so the exit code above proves nothing on its own.

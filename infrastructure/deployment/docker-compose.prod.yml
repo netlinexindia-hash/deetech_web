@@ -56,15 +56,29 @@ services:
         NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID:-}
         API_BASE_URL: http://api:4000
       # `next build` prerenders content pages by calling the API, so the
-      # build has to reach it. Joining the application network lets the
-      # build container resolve `api` by Docker DNS — the API is not
-      # published to the host in production, so host networking would not
-      # reach it. deploy.sh starts the API before building, which is what
-      # creates this network.
+      # build has to reach it. Without that the build still SUCCEEDS and
+      # ships a site with no services, brands or articles, which is the
+      # worst kind of failure.
       #
-      # Without this the build still SUCCEEDS and ships a site with no
-      # services, brands or articles, which is the worst kind of failure.
-      network: deetech_net
+      # `network: deetech_net` was the obvious way to arrange this and it
+      # does NOT work. `build.network` is a classic-builder feature, and
+      # buildkit — the default since Docker 23 — rejects it outright:
+      #   network mode "deetech_net" not supported by buildkit
+      # It fails the build rather than ignoring it, which is the one mercy.
+      #
+      # So deploy.sh builds with a buildx builder that is itself attached to
+      # deetech_net, and passes the API container's current address here.
+      # Being on the network is not sufficient on its own: buildkit replaces
+      # resolv.conf inside RUN sandboxes with public DNS, so Docker's
+      # embedded resolver at 127.0.0.11 is unreachable and the name has to
+      # come from /etc/hosts. Doing it this way keeps API_BASE_URL byte for
+      # byte identical at build time and at runtime.
+      #
+      # The fallback is loopback on purpose. A build that forgets to set
+      # this gets connection-refused at once instead of hanging, and the
+      # prerendered-page guard in deploy.sh then fails the deploy.
+      extra_hosts:
+        - "api:${API_BUILD_IP:-127.0.0.1}"
     environment:
       NODE_ENV: production
       API_BASE_URL: http://api:4000
