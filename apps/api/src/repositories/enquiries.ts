@@ -1,4 +1,4 @@
-import type { EnquiryInput, EnquiryStatus } from "@deetech/shared-types";
+import type { EnquiryInput, EnquiryStatus, Paginated } from "@deetech/shared-types";
 import type { DbPool } from "../db/pool.js";
 
 export interface StoredEnquiry {
@@ -12,6 +12,48 @@ export interface StoredEnquiry {
 export interface EnquiryContext {
   ipHash: string | null;
   userAgent: string | null;
+}
+
+/** The full record, as the admin inbox shows it. */
+export interface EnquiryRecord {
+  id: number;
+  name: string;
+  email: string;
+  company: string | null;
+  phone: string | null;
+  subject: string;
+  message: string;
+  sourcePage: string | null;
+  status: EnquiryStatus;
+  createdAt: string;
+}
+
+interface EnquiryRow {
+  id: number;
+  name: string;
+  email: string;
+  company: string | null;
+  phone: string | null;
+  subject: string;
+  message: string;
+  source_page: string | null;
+  status: EnquiryStatus;
+  created_at: Date;
+}
+
+function toRecord(row: EnquiryRow): EnquiryRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    company: row.company,
+    phone: row.phone,
+    subject: row.subject,
+    message: row.message,
+    sourcePage: row.source_page,
+    status: row.status,
+    createdAt: row.created_at.toISOString(),
+  };
 }
 
 export class EnquiryRepository {
@@ -77,5 +119,57 @@ export class EnquiryRepository {
       [ipHash, String(windowMinutes)],
     );
     return Number(rows[0]?.count ?? 0);
+  }
+
+  async list(
+    page: number,
+    perPage: number,
+    status: EnquiryStatus | "all",
+  ): Promise<Paginated<EnquiryRecord>> {
+    const offset = (page - 1) * perPage;
+    const { rows } = await this.pool.query<EnquiryRow & { total_count: string }>(
+      `SELECT *, count(*) OVER () AS total_count
+         FROM contact_enquiries
+        WHERE ($3::text = 'all' OR status = $3::text)
+        ORDER BY created_at DESC, id DESC
+        LIMIT $1 OFFSET $2`,
+      [perPage, offset, status],
+    );
+    const total = rows[0] ? Number(rows[0].total_count) : 0;
+    return {
+      items: rows.map(toRecord),
+      page,
+      perPage,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / perPage)),
+    };
+  }
+
+  async findById(id: number): Promise<EnquiryRecord | null> {
+    const { rows } = await this.pool.query<EnquiryRow>(
+      `SELECT * FROM contact_enquiries WHERE id = $1`,
+      [id],
+    );
+    return rows[0] ? toRecord(rows[0]) : null;
+  }
+
+  /**
+   * Only the status is writable. The rest is a record of what somebody
+   * actually sent and must not be editable after the fact.
+   */
+  async setStatus(id: number, status: EnquiryStatus): Promise<EnquiryRecord | null> {
+    const { rows } = await this.pool.query<EnquiryRow>(
+      `UPDATE contact_enquiries SET status = $2 WHERE id = $1 RETURNING *`,
+      [id, status],
+    );
+    return rows[0] ? toRecord(rows[0]) : null;
+  }
+
+  async remove(id: number): Promise<boolean> {
+    const result = await this.pool.query(
+      `DELETE FROM contact_enquiries WHERE id = $1`,
+      [id],
+    );
+    return (result.rowCount ?? 0) > 0;
   }
 }

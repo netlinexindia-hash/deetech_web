@@ -14,7 +14,7 @@ The full specification and the 30-day backlog are in
 | 1 | Audit, design system, repo, shared layout, homepage | **Done** — see [`docs/week-1-report.md`](docs/week-1-report.md) |
 | 2 | Public pages | **Done** — see [`docs/week-2-report.md`](docs/week-2-report.md) |
 | 3 | API and database | **Done** — see [`docs/week-3-report.md`](docs/week-3-report.md) |
-| 4 | Admin CMS | Not started |
+| 4 | Admin CMS | **Done** — see [`docs/week-4-report.md`](docs/week-4-report.md) |
 | 5 | Content migration and release candidate | Not started |
 | 6 | Production launch | Not started |
 
@@ -35,7 +35,9 @@ Flask is out of scope for the MVP, per the plan.
 ```
 apps/
   web/                    Next.js public site and admin UI
-    src/lib/content/      Content layer — swapped for API calls in Week 3
+    src/app/(site)/       Public pages, inside the marketing chrome
+    src/app/admin/        The CMS, outside it
+    src/lib/content/      Content layer — reads the API
   api/                    Express API
 packages/
   shared-types/           API contract shared by web and api
@@ -171,6 +173,27 @@ A list request that cannot reach the API returns empty and a detail returns
 null, rendering as an empty state or a 404. Letting the error propagate would
 turn a brief API restart into a 500 on every page.
 
+## The admin CMS
+
+`/admin`, signed in with an account created by `admin:create`. It manages
+pages, services, brands, products, blog posts, media and the enquiry inbox.
+
+Two things worth knowing before changing it:
+
+- **The API is the control, not the UI.** Every admin route is behind
+  `requireAuth` in Express, and deletes additionally require the `admin`
+  role. Hiding a button in React is not authorization.
+- **Write schemas are shared and must stay idempotent.** Every save is
+  validated twice — by the Next.js server action against the form, then by
+  the API against what the action forwards. The second parse sees the first
+  parse's output, so a schema that rejects its own output breaks every save
+  with an empty optional field. There are round-trip tests for this.
+
+Field layout for the CMS forms is described once in
+`apps/web/src/lib/admin/resources.ts`; the list and edit pages render from
+it. That registry is presentation only — validation lives in the shared Zod
+schemas.
+
 ## Conventions
 
 - **Server-side validation.** Every request body is parsed with a Zod schema.
@@ -203,8 +226,14 @@ turn a brief API restart into a 500 on every page.
   a devDependency, pinned exactly because it is published only as a
   prerelease, and pulls a ~107 MB platform binary on install.
 - **Enquiry notification email is not configured.** Submissions are saved to
-  the database and will appear in the admin list, but nobody is emailed until
+  the database and appear in the admin inbox, but nobody is emailed until
   `SMTP_HOST` and credentials are set.
+- **`next build` prerenders content pages by calling the API.** With the API
+  down the build still succeeds — the content layer catches the failure and
+  returns empty — but it produces a site with no services, brands or
+  articles. Bring the database and API up before building the web image, or
+  drop prerendering and let the revalidate window fill pages on first
+  request. To be settled on Day 26.
 - **The brand artwork is raster only.** `assets/brand/Deetech-logo.png` is a
   661x606 PNG. A vector (SVG/AI) source is still outstanding; until it arrives
   the mark cannot be recoloured or scaled cleanly beyond its source resolution.
@@ -220,6 +249,7 @@ turn a brief API restart into a 500 on every page.
 - [`docs/week-1-report.md`](docs/week-1-report.md) — what Week 1 delivered, what was verified, and what is blocked
 - [`docs/week-2-report.md`](docs/week-2-report.md) — the public pages, the content layer, and what is still blocked
 - [`docs/week-3-report.md`](docs/week-3-report.md) — schema, migrations, public endpoints, enquiries, admin auth
+- [`docs/week-4-report.md`](docs/week-4-report.md) — the admin CMS, media uploads, and the build-time API constraint
 - [`database/README.md`](database/README.md) — how to run migrations and seeds, and why the schema is shaped the way it is
 - [`docs/redirects.csv`](docs/redirects.csv) — legacy URL map
 - [`docs/audit/legacy-copy/`](docs/audit/legacy-copy) — plain-text extract of every live page, for the Day 21 content migration

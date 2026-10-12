@@ -58,6 +58,17 @@ const envSchema = z.object({
   // --- enquiry throttling --------------------------------------------------
   ENQUIRY_MAX_PER_WINDOW: z.coerce.number().int().min(1).max(100).default(5),
   ENQUIRY_WINDOW_MINUTES: z.coerce.number().int().min(1).max(1440).default(60),
+
+  // --- media ---------------------------------------------------------------
+  // Backed by a persistent volume in production. A disposable container
+  // layer is not acceptable storage for uploads.
+  MEDIA_STORAGE_PATH: z.string().default("./.devdata/media"),
+  MEDIA_MAX_UPLOAD_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .max(52_428_800)
+    .default(5_242_880),
 });
 
 export type AppConfig = Readonly<{
@@ -82,6 +93,10 @@ export type AppConfig = Readonly<{
   enquiry: Readonly<{
     maxPerWindow: number;
     windowMinutes: number;
+  }>;
+  media: Readonly<{
+    storagePath: string;
+    maxUploadBytes: number;
   }>;
 }>;
 
@@ -138,6 +153,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     enquiry: Object.freeze({
       maxPerWindow: data.ENQUIRY_MAX_PER_WINDOW,
       windowMinutes: data.ENQUIRY_WINDOW_MINUTES,
+    }),
+    media: Object.freeze({
+      storagePath: data.MEDIA_STORAGE_PATH,
+      maxUploadBytes: data.MEDIA_MAX_UPLOAD_BYTES,
     }),
   });
 }

@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
-import { Footer } from "@/components/layout/Footer";
-import { Header } from "@/components/layout/Header";
 import { site, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -49,22 +47,17 @@ export const viewport: Viewport = {
   themeColor: "#242f65",
 };
 
+/**
+ * The document shell only.
+ *
+ * The public site's header, footer and skip link live in `(site)/layout.tsx`
+ * so that `/admin` is not wrapped in them — an admin screen inside the
+ * marketing chrome is confusing and leaks the public nav into a tool.
+ */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en-IN" className={`${inter.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">
-        <a
-          href="#main"
-          className="sr-only rounded-lg bg-brand-700 px-4 font-semibold text-white focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[100] focus:inline-flex focus:min-h-11 focus:items-center"
-        >
-          Skip to content
-        </a>
-        <Header />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <Footer />
-      </body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

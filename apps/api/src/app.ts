@@ -8,9 +8,14 @@ import type { AppConfig } from "./config.js";
 import type { DbPool } from "./db/pool.js";
 import { logger } from "./logger.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
+import { AdminContentRepository } from "./repositories/admin-content.js";
 import { AuthRepository } from "./repositories/auth.js";
 import { ContentRepository } from "./repositories/content.js";
 import { EnquiryRepository } from "./repositories/enquiries.js";
+import { MediaRepository } from "./repositories/media.js";
+import { adminContentRouter } from "./routes/admin-content.js";
+import { adminEnquiryRouter } from "./routes/admin-enquiries.js";
+import { adminMediaRouter } from "./routes/admin-media.js";
 import { authRouter } from "./routes/auth.js";
 import { contentRouter } from "./routes/content.js";
 import { enquiryRouter } from "./routes/enquiries.js";
@@ -121,6 +126,38 @@ export function buildApp({
       enquiryRouter(enquiries, mailer ?? createMailer(config), config),
     );
     app.use(API_PREFIX, authRouter(auth, config));
+
+    // Everything below is behind requireAuth, applied inside each router so
+    // a route added later cannot accidentally be mounted unprotected.
+    const adminContent = new AdminContentRepository(pool);
+    const media = new MediaRepository(pool);
+
+    app.use(API_PREFIX, adminContentRouter(adminContent, auth, config));
+    app.use(API_PREFIX, adminMediaRouter(media, auth, config));
+    app.use(API_PREFIX, adminEnquiryRouter(enquiries, auth, config));
+
+    /**
+     * Uploaded files.
+     *
+     * Public on purpose — these are images embedded in published pages. The
+     * hardening is in what can get in here (verified magic bytes, generated
+     * names, no SVG) plus the headers below: nothing is ever executed, and
+     * a browser will not sniff a different type than we declare.
+     */
+    app.use(
+      "/media",
+      express.static(config.media.storagePath, {
+        index: false,
+        dotfiles: "deny",
+        maxAge: "365d",
+        immutable: true,
+        setHeaders: (res) => {
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          res.setHeader("Content-Disposition", "inline");
+          res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+        },
+      }),
+    );
   }
 
   app.use(notFoundHandler);

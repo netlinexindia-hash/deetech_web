@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useId } from "react";
 import { useFormStatus } from "react-dom";
 import { submitEnquiry, type EnquiryState } from "@/app/actions/enquiry";
@@ -217,12 +218,12 @@ export function EnquiryForm({ sourcePage }: { sourcePage: string }) {
         <SubmitButton />
         <p className="text-sm text-muted">
           We use your details only to answer this enquiry. See our{" "}
-          <a
+          <Link
             href="/privacy-policy"
             className="font-medium text-brand-800 underline underline-offset-4"
           >
             privacy policy
-          </a>
+          </Link>
           .
         </p>
       </div>

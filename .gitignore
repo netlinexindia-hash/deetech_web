@@ -51,4 +51,4 @@ docker-compose.override.yml
 backups/
 *.sql.gz
 *.dump
-/.devdata/
+.devdata/
