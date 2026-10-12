@@ -1,0 +1,92 @@
+# Production overlay for the host-nginx topology.
+#
+#   DEPLOY_MODE=host-nginx infrastructure/deployment/deploy.sh
+#
+# nginx runs on the host and forwards to the containers over loopback. Use
+# infrastructure/nginx/deetechgroup-host.conf for production, or
+# infrastructure/nginx/staging-local.conf to verify on a box with no domain
+# and no certificate.
+#
+# How this differs from docker-compose.prod.yml, which is the alternative:
+#
+#   * No nginx service, and no certbot service. Both live on the host, so
+#     the certificate and its renewal are managed by the host certbot and
+#     are not Docker's business at all.
+#   * web and api KEEP the base file's loopback publishes, because that is
+#     how host nginx reaches them. docker-compose.prod.yml clears those
+#     publishes instead, since there nothing may bypass the container nginx.
+#
+# Those publishes are bound to 127.0.0.1, never 0.0.0.0. That matters more
+# than it looks: Docker writes its own iptables rules and a published port
+# is reachable from off the box even when ufw says it is blocked. Binding to
+# loopback is what makes the apps unreachable except through nginx, and ufw
+# is not what is enforcing it.
+#
+# PostgreSQL has no published port in either topology.
+
+name: deetech
+
+services:
+  db:
+    restart: always
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # A small VPS; these are modest and deliberate rather than defaults.
+    command:
+      - postgres
+      - -c
+      - max_connections=50
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - log_min_duration_statement=1000
+    logging: &prod-logging
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  api:
+    restart: always
+    environment:
+      NODE_ENV: production
+    volumes:
+      - media-data:/var/lib/deetech/media
+    logging: *prod-logging
+
+  web:
+    restart: always
+    build:
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL must be set}
+        NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID:-}
+        API_BASE_URL: http://api:4000
+      # `next build` prerenders content pages by calling the API, so the
+      # build has to reach it. Without that the build still SUCCEEDS and
+      # ships a site with no services, brands or articles.
+      #
+      # The API is published on loopback in this topology, but that does not
+      # help: a buildkit RUN step cannot reach the host's loopback either.
+      # So this works the same way as the container topology — deploy.sh
+      # builds with a buildx builder attached to deetech_net and passes the
+      # API container's address here, because buildkit replaces resolv.conf
+      # inside RUN sandboxes and `api` does not resolve.
+      #
+      # The fallback is loopback on purpose. A build that forgets to set
+      # this gets connection-refused at once instead of hanging, and the
+      # prerendered-page guard in deploy.sh then fails the deploy.
+      extra_hosts:
+        - "api:${API_BUILD_IP:-127.0.0.1}"
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: http://api:4000
+    logging: *prod-logging
+
+networks:
+  deetech:
+    name: deetech_net
+    driver: bridge
+
+volumes:
+  db-data:
+  media-data:

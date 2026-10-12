@@ -25,15 +25,39 @@
 # never rename or drop in the same release as the code change.
 #
 # Environment: read from .env in the repository root.
+#   DEPLOY_MODE     host-nginx (default) or container-nginx. See below.
 #   SKIP_BACKUP=1   skip step 1 (for a staging host with nothing to lose)
 
 set -Eeuo pipefail
 
 cd "$(dirname "$0")/../.."
 
-COMPOSE=(docker compose
-  -f docker-compose.yml
-  -f infrastructure/deployment/docker-compose.prod.yml)
+# Which topology to deploy.
+#
+#   host-nginx       nginx runs on the host and forwards to loopback
+#                    publishes. web and api are published on 127.0.0.1.
+#                    Config: infrastructure/nginx/deetechgroup-host.conf
+#                    (or staging-local.conf on a box with no domain).
+#
+#   container-nginx  nginx runs in compose and is the only exposed service.
+#                    web and api publish nothing at all.
+#                    Config: infrastructure/nginx/deetechgroup.conf
+#
+# The two are not interchangeable: the upstreams differ, and pointing one
+# topology at the other's config reaches nothing.
+DEPLOY_MODE="${DEPLOY_MODE:-host-nginx}"
+
+case "$DEPLOY_MODE" in
+  host-nginx)
+    OVERLAY=infrastructure/deployment/docker-compose.hostnginx.yml ;;
+  container-nginx)
+    OVERLAY=infrastructure/deployment/docker-compose.prod.yml ;;
+  *)
+    printf '\n\033[31mFAILED: DEPLOY_MODE must be host-nginx or container-nginx, not "%s"\033[0m\n'       "$DEPLOY_MODE" >&2
+    exit 1 ;;
+esac
+
+COMPOSE=(docker compose -f docker-compose.yml -f "$OVERLAY")
 
 BACKUP_DIR="${BACKUP_DIR:-/srv/deetech/backups}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
@@ -150,19 +174,22 @@ BUILDER=deetech-builder
 BUILDER_CONTAINER="buildx_buildkit_${BUILDER}0"
 
 builder_on_network() {
-  docker inspect -f '{{range $net, $_ := .NetworkSettings.Networks}}{{$net}} {{end}}'     "$BUILDER_CONTAINER" 2>/dev/null | tr ' ' '
-' | grep -qx deetech_net
+  docker inspect -f '{{range $net, $_ := .NetworkSettings.Networks}}{{$net}} {{end}}' \
+    "$BUILDER_CONTAINER" 2>/dev/null | tr ' ' '\n' | grep -qx deetech_net
 }
 
 if ! docker buildx inspect "$BUILDER" >/dev/null 2>&1; then
   echo "    creating the $BUILDER buildx builder, attached to deetech_net"
-  docker buildx create --name "$BUILDER" --driver docker-container     --driver-opt network=deetech_net --bootstrap >/dev/null     || fail "could not create the $BUILDER buildx builder"
+  docker buildx create --name "$BUILDER" --driver docker-container \
+    --driver-opt network=deetech_net --bootstrap >/dev/null \
+    || fail "could not create the $BUILDER buildx builder"
 elif ! builder_on_network; then
   # The network was recreated under a builder that still remembers the old
   # one. Reconnecting is enough, and it keeps the build cache.
   echo "    reattaching $BUILDER to deetech_net"
   docker start "$BUILDER_CONTAINER" >/dev/null 2>&1 || true
-  docker network connect deetech_net "$BUILDER_CONTAINER" 2>/dev/null     || fail "could not attach $BUILDER to deetech_net"
+  docker network connect deetech_net "$BUILDER_CONTAINER" 2>/dev/null \
+    || fail "could not attach $BUILDER to deetech_net"
 fi
 
 builder_on_network || fail "$BUILDER is not attached to deetech_net"
@@ -170,9 +197,11 @@ builder_on_network || fail "$BUILDER is not attached to deetech_net"
 # Resolved now rather than hardcoded: the address changes whenever the
 # container is recreated, which step 4 just did.
 API_BUILD_IP="$(
-  docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'     "$("${COMPOSE[@]}" ps -q api)" 2>/dev/null
+  docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+    "$("${COMPOSE[@]}" ps -q api)" 2>/dev/null
 )"
-[ -n "${API_BUILD_IP:-}" ]   || fail "could not determine the API container's address for the build"
+[ -n "${API_BUILD_IP:-}" ] \
+  || fail "could not determine the API container's address for the build"
 export API_BUILD_IP
 export BUILDX_BUILDER="$BUILDER"
 echo "    building against api at $API_BUILD_IP"
@@ -222,11 +251,35 @@ done
 # ---------------------------------------------------------------------------
 log "7/7  Reloading nginx"
 # ---------------------------------------------------------------------------
-"${COMPOSE[@]}" up -d nginx
-# Validate before reloading: a bad config that fails to load takes the site
-# down, whereas a failed test leaves the running config in place.
-"${COMPOSE[@]}" exec -T nginx nginx -t || fail "the nginx config is invalid; it was NOT reloaded"
-"${COMPOSE[@]}" exec -T nginx nginx -s reload
+# Validated before reloading, in both topologies: a bad config that fails to
+# load takes the site down, whereas a failed test leaves the running config
+# in place.
+if [ "$DEPLOY_MODE" = "container-nginx" ]; then
+  "${COMPOSE[@]}" up -d nginx
+  "${COMPOSE[@]}" exec -T nginx nginx -t </dev/null     || fail "the nginx config is invalid; it was NOT reloaded"
+  "${COMPOSE[@]}" exec -T nginx nginx -s reload </dev/null
+else
+  # nginx is on the host and is not managed by this script — it is not
+  # restarted, only reloaded, so a deploy never drops a connection.
+  if ! command -v nginx >/dev/null 2>&1; then
+    echo "    nginx is not installed on this host."
+    echo "    Install it and enable one of:"
+    echo "      infrastructure/nginx/deetechgroup-host.conf   (production, TLS)"
+    echo "      infrastructure/nginx/staging-local.conf       (local, plain HTTP)"
+    echo "    The containers are up and serving on loopback regardless."
+  elif ! nginx -t >/dev/null 2>&1; then
+    nginx -t || true
+    fail "the host nginx config is invalid; it was NOT reloaded"
+  else
+    if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet nginx; then
+      systemctl reload nginx || fail "nginx -t passed but the reload failed"
+      echo "    host nginx reloaded"
+    else
+      echo "    host nginx config is valid but the service is not running."
+      echo "    Start it with: systemctl enable --now nginx"
+    fi
+  fi
+fi
 
 log "Deployed"
 "${COMPOSE[@]}" ps

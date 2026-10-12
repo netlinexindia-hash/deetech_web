@@ -211,10 +211,19 @@ describe("GET /blog", () => {
   });
 
   it("paginates, newest first", async () => {
+    // Dated relative to the seeded article rather than to now(). The seed
+    // carries a fixed published_at, so anchoring on the clock made this test
+    // pass only on the day the seed was written: from the next day onward,
+    // `now() - 1 day` was newer than the seeded article and post-0 sorted
+    // first. Deriving the base from the row under test keeps the ordering
+    // deterministic however long from now it runs.
     for (let i = 0; i < 12; i++) {
       await db.pool.query(
         `INSERT INTO blog_posts (title, slug, excerpt, status, published_at)
-         VALUES ($1, $2, 'E', 'published', now() - ($3 || ' days')::interval)`,
+         VALUES ($1, $2, 'E', 'published',
+                 (SELECT published_at FROM blog_posts
+                   WHERE slug = 'shared-cloud-or-dedicated-hosting')
+                 - ($3 || ' days')::interval)`,
         [`Post ${i}`, `post-${i}`, String(i + 1)],
       );
     }
@@ -223,7 +232,7 @@ describe("GET /blog", () => {
     expect(first.body.items).toHaveLength(5);
     expect(first.body.total).toBe(13);
     expect(first.body.totalPages).toBe(3);
-    // The seeded article is dated today, so it sorts first.
+    // Every generated post is older than the seeded article, so it sorts first.
     expect(first.body.items[0].slug).toBe("shared-cloud-or-dedicated-hosting");
 
     const last = await request(app).get(`${API_PREFIX}/blog?perPage=5&page=3`);

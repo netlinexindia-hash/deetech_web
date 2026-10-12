@@ -103,7 +103,10 @@ services:
       # override against the project directory, so the `../nginx/...` these
       # once were resolved to /srv/deetech/nginx and nginx would not start.
       - ./infrastructure/nginx/deetechgroup.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./infrastructure/nginx/snippets:/etc/nginx/snippets:ro
+      # /etc/nginx/deetech rather than /etc/nginx/snippets, so the path is
+      # the same here and on a host nginx, where /etc/nginx/snippets is
+      # already Debian's own.
+      - ./infrastructure/nginx/snippets:/etc/nginx/deetech:ro
       - certbot-conf:/etc/letsencrypt:ro
       - certbot-www:/var/www/certbot:ro
       # The WordPress uploads directory, copied across at cutover so old
