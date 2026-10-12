@@ -6,23 +6,43 @@ Days 26–30 of the 30-working-day plan. 2026-10-12.
 
 ## Read this first
 
-**The site has not been deployed.** This week is different from the previous
-five: most of it cannot be done from a development machine.
+**The stack is deployed and verified on a staging host, and is not live.**
 
-| Needed | Available here |
+This section originally said the opposite — that nothing had been run,
+because no Docker host was available. A staging server was provided
+afterwards (Ubuntu 24.04, 4 cores, 7.7 GiB, a LAN address), and everything
+below was then executed on it.
+
+| | |
 |---|---|
-| Docker Engine + compose | **Not installed** |
-| nginx | **Not installed** |
-| SSH to the VPS | **No access** |
-| DNS control | **No access** |
-| Owner approval to cut over | Not given, and not mine to assume |
+| Deployed to | `192.168.1.20`, plain HTTP, host nginx |
+| Acceptance suite | **103 checks pass** against the running site |
+| Production | **Not deployed.** Yours, separately |
+| DNS and TLS | Untouched. A LAN address cannot be certified |
+| The live WordPress site | Untouched |
 
-So Week 6 delivers **everything that makes the deployment runnable by you**,
-plus tooling that runs against whatever URL you point it at. The compose
-files, nginx config and shell scripts are written and syntax-checked but
-**unexecuted**. Day 29's "approve cutover" and Day 30's "deploy" are yours.
+Running it mattered. **Six defects were found that no amount of writing and
+syntax-checking had surfaced**, four of which would have broken the first
+production deploy outright:
 
-I have not pretended otherwise anywhere in these files.
+1. The API image did not contain the migration SQL — step 3 of `deploy.sh`
+   failed with `ENOENT` on `/app/database/migrations/`.
+2. `build.network` in the compose file is a classic-builder feature that
+   **buildkit rejects outright**, so the mechanism the entire build-order fix
+   depended on had never worked on a current Docker.
+3. The nginx config mount path resolved against the project directory, not
+   the override's directory, so nginx would not start.
+4. `pg_isready` answers *during* `initdb`, so the first deploy could migrate
+   against a server that was restarting.
+5. `backup.sh` and `restore.sh` could not work on a deployed host at all —
+   both reached for a database that publishes no port. A nightly cron would
+   have failed every night, and the first anyone would have known is a
+   restore that did not come back.
+6. The homepage title rendered the brand twice. Found by **looking at the
+   page**; the smoke test only checked that a title was at least ten
+   characters long.
+
+Day 29's "approve cutover" and Day 30's production deploy remain yours.
 
 ---
 
@@ -173,17 +193,34 @@ redirect snippet, and the write schemas having to accept their own output.
 
 ## Verification
 
+All of the following was executed on the staging host, not reasoned about.
+
 | | |
 |---|---|
-| `bash -n` on all four scripts | OK |
-| `smoke-test.mjs` against the local stack | **84 passed, 3 skipped** |
-| `verify-redirects.mjs` | 15/15 legacy URLs covered, 11/11 destinations resolve |
 | `npm run check` | format, lint, typecheck clean; **215 tests pass** |
-| Compose files | No tabs, services parse, nginx snippet references exist |
+| `deploy.sh`, all 7 steps | **passes**, host-nginx topology |
+| `smoke-test.mjs` against the deployment | **103 passed, 1 skipped** (HSTS, correctly — plain HTTP) |
+| `verify-redirects.mjs` | 15/15 legacy URLs covered, 11/11 destinations resolve |
+| Database | fresh cluster, **UTF8**, 1 migration + 4 seeds applied |
+| `nginx -t` on the host | OK, with the shared locations snippet |
+| Build-content guard | **5 service detail pages prerendered** |
+| `backup.sh` | container mode auto-detected; dump + media archive verified |
+| `restore.sh` | **full drill**: row deleted, restored, row confirmed back |
+| Confirmation guard | `restore.sh` refuses without `RESTORE_CONFIRM` |
+| Port exposure | 3000 / 4000 / 5432 **unreachable from off the box**; only 80 answers |
+| Rendering | homepage, service detail, admin login, and the **mobile drawer** |
 
-**Not verified, and cannot be from here:** `docker compose build`, `docker
-compose up`, `nginx -t`, certificate issuance, `pg_dump`/`psql`, firewall
-rules, DNS. Every one of those is a step in the runbook.
+The empty-build trap was measured rather than assumed. A web image built
+with the API unreachable **exits 0** and contains exactly 8 prerendered
+pages — `/`, `/about`, `/services`, `/brands`, `/products`, `/contact` and
+the two error pages — and **zero** detail pages. The original guard, a grep
+for a service slug, still matched it, because the slugs are in the hardcoded
+navigation. That was a false pass, and it is why the check now counts detail
+pages.
+
+**Still not verified, because it cannot be from a LAN box:** certificate
+issuance, renewal, HSTS in anger, and DNS. Let's Encrypt validates from the
+internet. Those remain runbook steps for the production host.
 
 ## What is genuinely left
 

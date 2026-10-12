@@ -93,30 +93,72 @@ into a Dockerfile.
 
 The nginx config references a certificate, so nginx cannot start until one
 exists — and certbot's webroot challenge needs nginx running. Break the
-circle by issuing the certificate with a standalone certbot first, while
-nothing is on port 80:
+circle by issuing the certificate before enabling the site config.
+
+**This needs a public DNS name pointing at the box.** Let's Encrypt
+validates from the internet, so a LAN address cannot be certified at all —
+on a staging box, use `staging-local.conf` and plain HTTP instead, and leave
+TLS to the real host.
+
+### host-nginx (the default topology)
+
+certbot runs on the host and owns renewal:
+
+```bash
+sudo apt-get install -y certbot
+sudo mkdir -p /var/www/certbot
+
+# Nothing on port 80 yet, so standalone:
+sudo certbot certonly --standalone \
+  -d www.deetechgroup.com -d deetechgroup.com \
+  --email support@deetechgroup.com --agree-tos --no-eff-email
+```
+
+Then enable the site config (§4) and switch renewal to the webroot, so
+renewals never need to stop nginx:
+
+```bash
+sudo certbot certonly --webroot -w /var/www/certbot \
+  -d www.deetechgroup.com -d deetechgroup.com --force-renewal
+sudo systemctl enable --now certbot.timer
+sudo certbot renew --dry-run
+```
+
+Add a deploy hook so a renewed certificate is actually picked up —
+certbot renewing without reloading nginx is a classic way to serve an
+expired certificate for ninety days:
+
+```bash
+echo -e '#!/bin/sh\nsystemctl reload nginx' \
+  | sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+```
+
+### container-nginx
+
+Issue with a standalone certbot container while nothing is on port 80:
 
 ```bash
 docker run --rm -p 80:80 \
-  -v /srv/deetech/certbot-conf:/etc/letsencrypt \
-  -v /srv/deetech/certbot-www:/var/www/certbot \
+  -v deetech_certbot-conf:/etc/letsencrypt \
+  -v deetech_certbot-www:/var/www/certbot \
   certbot/certbot certonly --standalone \
   -d www.deetechgroup.com -d deetechgroup.com \
   --email support@deetechgroup.com --agree-tos --no-eff-email
 ```
 
-If WordPress is still serving on port 80, use the DNS challenge instead
-(`--manual --preferred-challenges dns`) so nothing has to stop.
-
-Renewal afterwards is handled by the `certbot` service in the production
-compose file, which checks twice a day and is a no-op until a certificate is
-within 30 days of expiry. **Verify renewal works before you need it:**
+Renewal is then the `certbot` service in `docker-compose.prod.yml`, which
+checks twice a day and is a no-op until a certificate is within 30 days of
+expiry. **Verify renewal works before you need it:**
 
 ```bash
 docker compose -f docker-compose.yml \
   -f infrastructure/deployment/docker-compose.prod.yml \
   run --rm certbot renew --dry-run
 ```
+
+If WordPress is still serving on port 80 in either case, use the DNS
+challenge (`--manual --preferred-challenges dns`) so nothing has to stop.
 
 ---
 
@@ -152,9 +194,59 @@ way in.
 
 ## 4. Deploy
 
+### Choose the topology first
+
+Two are supported, and they are not interchangeable. `deploy.sh` takes
+`DEPLOY_MODE`, defaulting to `host-nginx`.
+
+| | `host-nginx` (default) | `container-nginx` |
+|---|---|---|
+| nginx runs | on the host | in compose |
+| web and api | published on `127.0.0.1` | publish nothing |
+| nginx upstreams | `127.0.0.1:3000` / `:4000` | `web:3000` / `api:4000` |
+| server config | `deetechgroup-host.conf` | `deetechgroup.conf` |
+| compose overlay | `docker-compose.hostnginx.yml` | `docker-compose.prod.yml` |
+| TLS and renewal | host certbot | the `certbot` container |
+
+**The upstreams are the whole difference and getting them wrong fails
+confusingly.** Host nginx cannot resolve `web:3000` — that name only exists
+on the Docker network. Container nginx pointed at `127.0.0.1:3000` reaches
+only itself. The routing is shared between both configs via
+`infrastructure/nginx/snippets/deetech-locations.conf` so they cannot drift,
+but the upstream block belongs to each config and is yours to get right.
+
+The loopback publishes in `host-nginx` are bound to `127.0.0.1`, never
+`0.0.0.0`. That is what makes them unreachable from off the box — **not**
+ufw, which Docker bypasses. Verify with `nmap` from another machine as in §3.
+
+### Host nginx: one-time setup
+
+Skip this for `container-nginx`.
+
+```bash
+sudo apt-get install -y nginx
+sudo ln -sfn /srv/deetech/site/infrastructure/nginx/snippets /etc/nginx/deetech
+sudo cp /srv/deetech/site/infrastructure/nginx/deetechgroup-host.conf \
+        /etc/nginx/sites-available/deetech
+sudo ln -sfn /etc/nginx/sites-available/deetech /etc/nginx/sites-enabled/deetech
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+`/etc/nginx/deetech` rather than `/etc/nginx/snippets` because Debian and
+Ubuntu already ship the latter. It is a symlink into the checkout, so
+`git pull` updates the redirect rules and a reload picks them up.
+
+On a box with no domain and no certificate — a LAN or staging host — use
+`staging-local.conf` instead. It is the same topology over plain HTTP on
+`server_name _`, so the stack can be verified end to end before anything
+real is involved.
+
+### Run it
+
 ```bash
 cd /srv/deetech/site
-infrastructure/deployment/deploy.sh
+DEPLOY_MODE=host-nginx infrastructure/deployment/deploy.sh
 ```
 
 **The server does not need Node installed.** Everything builds inside
@@ -163,44 +255,71 @@ Docker, and the nginx redirect snippet
 committed** — CI fails if it drifts from `docs/redirects.csv`. Regenerate it
 on a development machine when you change the CSV, not here.
 
+**On a first deploy, seed before deploying** — see below. `deploy.sh` runs
+migrations but not seeds, so against an empty database step 5 correctly
+refuses to ship a site with no content.
+
 `deploy.sh` does this, in this order, stopping at the first failure:
 
 1. **Backs up** before anything changes.
-2. Starts the database and waits for `pg_isready`.
+2. Starts the database and waits for the container to report **healthy** —
+   not merely for `pg_isready`, which answers during `initdb` on a first
+   deploy while the server is about to restart.
 3. Builds the API image and **runs migrations in a throwaway container**.
 4. Starts the API and waits for `/health` to report the database `ok`.
-5. **Then** builds web. `next build` prerenders content by calling the API,
-   so the build joins the application network to reach it. Building before
-   the API is up ships a site with no services, brands or articles **and
-   does not fail while doing it**, so the script counts the prerendered
-   service **detail** pages in the image and fails if there are none.
-   (Grepping the HTML for a service slug does not work — the slugs are in
-   the hardcoded navigation, so they match even in an empty build.)
+5. **Then** builds web. `next build` prerenders content by calling the API.
+   Building before the API is up ships a site with no services, brands or
+   articles **and does not fail while doing it**, so the script counts the
+   prerendered service **detail** pages in the image and fails if there are
+   none. (Grepping the HTML for a service slug does not work — the slugs are
+   in the hardcoded navigation, so they match even in an empty build.)
+
+   Reaching the API from a build takes two things, and `deploy.sh` does both.
+   It builds with a **buildx builder attached to `deetech_net`**, because
+   `build.network` in a compose file is a classic-builder feature that
+   buildkit rejects outright. And it passes the API container's address
+   through `build.extra_hosts`, because buildkit replaces resolv.conf inside
+   `RUN` sandboxes with public DNS, so `api` does not resolve even from a
+   builder that is on the network.
+
 6. Swaps in web and waits for it to respond.
 7. Validates the nginx config with `nginx -t` **before** reloading, because a
    bad config that fails to load takes the site down whereas a failed test
-   leaves the running config in place.
+   leaves the running config in place. In `host-nginx` mode it reloads the
+   host service with `systemctl reload nginx`; nginx is never restarted by a
+   deploy, so no connection is dropped.
+
+### Seed the content
+
+Run this **before the first `deploy.sh`**, against the empty database.
+`deploy.sh` migrates but does not seed, and its build guard will refuse a
+site with no content — correctly.
+
+```bash
+cd /srv/deetech/site
+COMPOSE="docker compose -f docker-compose.yml -f infrastructure/deployment/docker-compose.hostnginx.yml"
+
+$COMPOSE up -d db
+$COMPOSE build api
+$COMPOSE run --rm --no-deps -T api node apps/api/dist/db/cli.js setup
+```
+
+`setup` is migrate then seed. Seeds are idempotent, so it is safe to re-run;
+`seed` alone works once the schema exists.
 
 ### Create the first administrator
 
+There are **no admin users after seeding** — the seeds deliberately create
+none, so there is no default account to forget about.
+
 ```bash
-docker compose -f docker-compose.yml \
-  -f infrastructure/deployment/docker-compose.prod.yml \
-  run --rm api node apps/api/dist/db/create-admin.js \
+$COMPOSE run --rm --no-deps -T api node apps/api/dist/db/create-admin.js \
   --email you@deetechgroup.com --name "Your Name"
 ```
 
 The password is generated and printed once. Put it in a password manager
 immediately. It is deliberately not a command-line argument — argv is
 readable by other processes on the machine and lands in shell history.
-
-### Seed the content
-
-```bash
-docker compose ... run --rm api node apps/api/dist/db/cli.js seed
-```
-
-Seeds are idempotent, so this is safe to re-run.
 
 ---
 
@@ -248,8 +367,24 @@ Add to root's crontab (`sudo crontab -e`):
 
 ```cron
 # Database and media, nightly at 02:15 UTC
-15 2 * * * cd /srv/deetech/site && DATABASE_URL='postgresql://deetech:<pw>@127.0.0.1:5432/deetech' MEDIA_DIR=/var/lib/docker/volumes/deetech_media-data/_data BACKUP_DIR=/srv/deetech/backups infrastructure/deployment/backup.sh /srv/deetech/backups >> /var/log/deetech-backup.log 2>&1
+15 2 * * * cd /srv/deetech/site && infrastructure/deployment/backup.sh /srv/deetech/backups >> /var/log/deetech-backup.log 2>&1
 ```
+
+**No `DATABASE_URL` and no `MEDIA_DIR`.** `backup.sh` finds the db container
+by compose label and runs `pg_dump` inside it, and archives the media
+volume through a throwaway container. Both are necessary rather than tidy:
+`DATABASE_URL` names `db:5432`, which is Docker's internal DNS and does not
+resolve on the host, and the database publishes no port in either topology —
+so a cron passing `DATABASE_URL` would have failed every night, silently,
+until the day someone needed a restore. Media is a Docker volume, not a
+directory; reaching into `/var/lib/docker/volumes/.../_data` happens to work
+as root on Linux but is unsupported and not guaranteed to keep working.
+
+Running `pg_dump` inside the container also keeps the client version equal
+to the server version, which is a common way to produce a dump that will not
+restore.
+
+`BACKUP_MODE=host` forces the old behaviour for a development machine.
 
 **A Docker volume is not a backup, and neither is a file on the same disk.**
 Copy the backups off the VPS — rclone to object storage, or `rsync` to
@@ -265,15 +400,24 @@ A backup you have not restored is a guess. Monthly, restore the latest dump
 into a scratch database and check the counts:
 
 ```bash
-docker compose ... exec -T db createdb -U deetech restore_test
-RESTORE_CONFIRM=restore_test \
-  DATABASE_URL=postgresql://deetech:<pw>@127.0.0.1:5432/restore_test \
+cd /srv/deetech/site
+$COMPOSE exec -T db createdb -U deetech restore_test
+
+POSTGRES_DB=restore_test RESTORE_CONFIRM=restore_test \
   infrastructure/deployment/restore.sh /srv/deetech/backups/deetech-db-<stamp>.sql.gz
-docker compose ... exec -T db dropdb -U deetech restore_test
+
+$COMPOSE exec -T db dropdb -U deetech restore_test
 ```
 
-`restore.sh` refuses to run unless `RESTORE_CONFIRM` matches the target
-database name, which is what stops a scratch restore landing on production.
+`restore.sh` detects the container the same way `backup.sh` does, so
+`POSTGRES_DB` is what points it at the scratch database. It refuses to run
+unless `RESTORE_CONFIRM` matches that name, which is what stops a scratch
+restore landing on production.
+
+**This drill has been run against a real deployment**, not just written
+down: a service row was deleted, the dump restored, and the row confirmed
+back. Do it on your own data too — a restore path that has only ever been
+read is not a restore path.
 
 ---
 
@@ -396,8 +540,9 @@ cutover. This is the real rollback and it costs almost nothing to keep.
 
 | Task | Command |
 |---|---|
-| Deploy a change | `infrastructure/deployment/deploy.sh` |
-| Roll back | `infrastructure/deployment/rollback.sh` |
+| Deploy a change | `DEPLOY_MODE=host-nginx infrastructure/deployment/deploy.sh` |
+| Roll back | `DEPLOY_MODE=host-nginx infrastructure/deployment/rollback.sh` |
+| Back up now | `infrastructure/deployment/backup.sh /srv/deetech/backups` |
 | Add a redirect | edit `docs/redirects.csv`, `npm run redirects:build` **on a dev machine**, commit, deploy |
 | Add an admin | `run --rm api node apps/api/dist/db/create-admin.js --email … --name …` |
 | Check the site | `node infrastructure/deployment/smoke-test.mjs --base https://www.deetechgroup.com` |
@@ -410,8 +555,16 @@ cutover. This is the real rollback and it costs almost nothing to keep.
 - **Migrations run against the old code** during a deploy, so they must be
   backwards compatible. Add a column, deploy, then use it.
 - **`next build` needs the API running.** Without it the build succeeds and
-  ships empty content pages. `deploy.sh` orders this correctly; a manual
-  `docker compose build web` does not.
+  ships empty content pages. `deploy.sh` orders this correctly, and builds
+  through a network-attached buildx builder with the API's address in
+  `extra_hosts`; a manual `docker compose build web` does neither and will
+  quietly produce an empty site.
+- **The nginx upstreams depend on the topology.** Host nginx cannot resolve
+  `web:3000`; container nginx pointed at `127.0.0.1:3000` reaches itself.
+  Use the config that matches `DEPLOY_MODE`.
+- **`backup.sh` and `restore.sh` must run on the host with Docker
+  available**, not with a `DATABASE_URL` pointing at `127.0.0.1:5432`. The
+  database publishes no port; they work by finding the container.
 - **Editing `docs/redirects.csv` is not enough** — regenerate the snippet and
   redeploy. CI fails if they drift.
 - **The write schemas are validated twice**, by the server action and again
