@@ -9,6 +9,11 @@ Work through this on a staging hostname first, not straight at production.
 
 ---
 
+> **Deploying to production with fresh content and no WordPress data?**
+> [`07-production-deploy.md`](07-production-deploy.md) is that path as a
+> single ordered checklist. This file stays the reference for why each
+> step is the way it is, and covers the containerised-nginx alternative.
+
 ## 0. Before you start
 
 You need:
