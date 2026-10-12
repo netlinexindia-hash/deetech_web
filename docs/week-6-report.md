@@ -59,9 +59,19 @@ Three parts to the fix:
    not work, because the API has no published port in production.
 2. `deploy.sh` starts the API and waits for it to be healthy **before**
    building web.
-3. `deploy.sh` then **greps the build output** for a known page and fails if
-   it is absent — because a build that could not reach the API exits 0, so
-   the exit code cannot be trusted.
+3. `deploy.sh` then **proves the build picked up content** and fails if it
+   did not — because a build that could not reach the API exits 0, so the
+   exit code cannot be trusted.
+
+My first version of that third check was a **false pass**, and a real Docker
+host caught it. It grepped the built HTML for `web-development`; that string
+is in the hardcoded navigation, so it matches on every page of even a
+completely empty build. Measured on the staging box: a build made with the
+API unreachable exits 0, contains exactly 8 prerendered pages
+(`/`, `/about`, `/services`, `/brands`, `/products`, `/contact`, and the two
+error pages), **zero** detail pages — and the grep still matched. The check
+now counts prerendered service detail pages, which come from
+`generateStaticParams` and therefore cannot exist without the API.
 
 My first attempt at this was wrong: I tried to bridge the API to the host
 with a socat sidecar, which would not have worked because joining a

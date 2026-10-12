@@ -154,10 +154,14 @@ way in.
 
 ```bash
 cd /srv/deetech/site
-npm ci                                   # for the redirect generator
-npm run redirects:build                  # writes the nginx snippet from docs/redirects.csv
 infrastructure/deployment/deploy.sh
 ```
+
+**The server does not need Node installed.** Everything builds inside
+Docker, and the nginx redirect snippet
+(`infrastructure/nginx/snippets/deetech-redirects.conf`) is **generated and
+committed** — CI fails if it drifts from `docs/redirects.csv`. Regenerate it
+on a development machine when you change the CSV, not here.
 
 `deploy.sh` does this, in this order, stopping at the first failure:
 
@@ -168,8 +172,10 @@ infrastructure/deployment/deploy.sh
 5. **Then** builds web. `next build` prerenders content by calling the API,
    so the build joins the application network to reach it. Building before
    the API is up ships a site with no services, brands or articles **and
-   does not fail while doing it**, so the script greps the build output for
-   a known page and fails if it is not there.
+   does not fail while doing it**, so the script counts the prerendered
+   service **detail** pages in the image and fails if there are none.
+   (Grepping the HTML for a service slug does not work — the slugs are in
+   the hardcoded navigation, so they match even in an empty build.)
 6. Swaps in web and waits for it to respond.
 7. Validates the nginx config with `nginx -t` **before** reloading, because a
    bad config that fails to load takes the site down whereas a failed test
@@ -200,7 +206,9 @@ Seeds are idempotent, so this is safe to re-run.
 
 ## 5. Verify, before pointing DNS at it
 
-Against the staging hostname:
+Both scripts are black-box HTTP clients, so run them **from your own
+machine** — anywhere with Node and network access to the host. They need
+nothing on the server.
 
 ```bash
 node infrastructure/deployment/smoke-test.mjs --base https://staging.deetechgroup.com
@@ -390,7 +398,7 @@ cutover. This is the real rollback and it costs almost nothing to keep.
 |---|---|
 | Deploy a change | `infrastructure/deployment/deploy.sh` |
 | Roll back | `infrastructure/deployment/rollback.sh` |
-| Add a redirect | edit `docs/redirects.csv`, `npm run redirects:build`, deploy |
+| Add a redirect | edit `docs/redirects.csv`, `npm run redirects:build` **on a dev machine**, commit, deploy |
 | Add an admin | `run --rm api node apps/api/dist/db/create-admin.js --email … --name …` |
 | Check the site | `node infrastructure/deployment/smoke-test.mjs --base https://www.deetechgroup.com` |
 | Restore a backup | `RESTORE_CONFIRM=<db> infrastructure/deployment/restore.sh <dump>` |
