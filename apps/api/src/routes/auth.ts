@@ -80,11 +80,29 @@ export function authRouter(repository: AuthRepository, config: AppConfig): Route
       await repository.recordLoginAttempt(emailLower, ipHash, true);
       await repository.markLoggedIn(user.id);
 
+      // A `Secure` cookie sent over plain HTTP is silently discarded by the
+      // browser, which looks exactly like the session expiring the instant
+      // you sign in. Tying the flag to NODE_ENV got that wrong for any
+      // production-mode deployment not behind TLS — a staging box on a LAN,
+      // for instance, where no certificate is possible.
+      //
+      // `req.secure` is the real answer: with `trust proxy` set (app.ts) it
+      // reflects X-Forwarded-Proto, which nginx sets from $scheme in both
+      // topologies. Over HTTPS the cookie is Secure; over HTTP it is usable.
+      if (config.isProduction && !req.secure) {
+        logger.warn(
+          "Admin sign-in over a non-HTTPS connection: the session cookie is " +
+            "being issued without the Secure flag. Expected on a staging host " +
+            "without TLS; on a public site it means the proxy is not setting " +
+            "X-Forwarded-Proto, and the session cookie is exposed.",
+        );
+      }
+
       res.cookie(SESSION_COOKIE, token, {
         // Not readable from JavaScript, so an XSS cannot exfiltrate it.
         httpOnly: true,
-        // Only sent over TLS in production.
-        secure: config.isProduction,
+        // Set when the connection actually is TLS, not when NODE_ENV says so.
+        secure: req.secure,
         // Blocks the cookie on cross-site POSTs, which is the CSRF defence
         // for the admin write routes. `strict` rather than `lax` because no
         // admin flow starts from an external link.

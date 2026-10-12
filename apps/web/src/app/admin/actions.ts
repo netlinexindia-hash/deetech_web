@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "@/lib/admin/api";
 
@@ -18,6 +18,28 @@ const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000";
 
 export interface LoginState {
   error?: string;
+}
+
+/**
+ * Whether this request actually arrived over TLS.
+ *
+ * A `Secure` cookie delivered over plain HTTP is silently dropped by the
+ * browser, so sign-in appears to work and the very next request is
+ * anonymous — indistinguishable from the session expiring instantly.
+ * Deciding the flag from NODE_ENV got that wrong for every production-mode
+ * deployment not behind TLS, such as a staging host on a LAN where no
+ * certificate is possible.
+ *
+ * nginx sets X-Forwarded-Proto from $scheme in both topologies. Falling back
+ * to `true` matters: if the header is ever missing the safe assumption is
+ * HTTPS, so a misconfigured proxy cannot silently downgrade a real
+ * production cookie — it breaks the login loudly instead.
+ */
+async function isSecureRequest(): Promise<boolean> {
+  const forwarded = (await headers()).get("x-forwarded-proto");
+  if (!forwarded) return true;
+  // The header can be a list when more than one proxy is in front.
+  return forwarded.split(",")[0]!.trim().toLowerCase() === "https";
 }
 
 /** Pulls our cookie's value out of a Set-Cookie header list. */
@@ -75,7 +97,8 @@ export async function signIn(
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    // Follows the connection, not NODE_ENV. See isSecureRequest above.
+    secure: await isSecureRequest(),
     sameSite: "strict",
     path: "/",
     expires: new Date(expiresAt),

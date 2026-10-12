@@ -77,8 +77,33 @@ describe("POST /admin/login", () => {
     const cookie = sessionCookie(res)!;
     expect(cookie).toContain("HttpOnly");
     expect(cookie).toContain("SameSite=Strict");
-    // `secure` is off outside production so local HTTP development works.
+    // Not Secure here: this request is plain HTTP.
     expect(cookie).not.toContain("Secure");
+  });
+
+  // The Secure flag follows the connection, not NODE_ENV. Tying it to
+  // NODE_ENV meant any production-mode deployment without TLS — a staging
+  // box on a LAN, say — issued a Secure cookie over HTTP, which the browser
+  // discards. That presents as the session expiring the moment you sign in.
+  it("sets Secure when the connection is HTTPS", async () => {
+    const res = await request(app)
+      .post(`${API_PREFIX}/admin/login`)
+      // What nginx sends; `trust proxy` makes req.secure honour it.
+      .set("X-Forwarded-Proto", "https")
+      .send({ email: EMAIL, password: PASSWORD });
+
+    expect(res.status).toBe(200);
+    expect(sessionCookie(res)!).toContain("Secure");
+  });
+
+  it("omits Secure when the connection is plain HTTP", async () => {
+    const res = await request(app)
+      .post(`${API_PREFIX}/admin/login`)
+      .set("X-Forwarded-Proto", "http")
+      .send({ email: EMAIL, password: PASSWORD });
+
+    expect(res.status).toBe(200);
+    expect(sessionCookie(res)!).not.toContain("Secure");
   });
 
   it("matches the email case-insensitively", async () => {
