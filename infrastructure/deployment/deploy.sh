@@ -127,19 +127,41 @@ done
 # ---------------------------------------------------------------------------
 log "5/7  Building the web image (the API must be reachable for this)"
 # ---------------------------------------------------------------------------
-# Published on loopback only for the duration of the build, so the build
-# container can reach it over host networking.
-docker run --rm -d --name deetech-build-proxy \
-  --network container:"$("${COMPOSE[@]}" ps -q api)" \
-  alpine/socat:latest TCP-LISTEN:4000,fork,reuseaddr TCP:127.0.0.1:4000 \
-  >/dev/null 2>&1 || true
-trap 'docker rm -f deetech-build-proxy >/dev/null 2>&1 || true' EXIT
+# The build joins the application network (build.network in the prod
+# overlay) so it resolves `api` by Docker DNS. Host networking would not
+# work: the API has no published port in production. Steps 2 and 4 created
+# this network, which is why the build comes after them.
+docker network inspect deetech_net >/dev/null 2>&1 \
+  || fail "the deetech_net network is missing; the API should have created it"
 
-BUILD_API_BASE_URL="${BUILD_API_BASE_URL:-http://127.0.0.1:4000}" \
-  "${COMPOSE[@]}" build web \
+"${COMPOSE[@]}" build web \
   || fail "the web build failed; the previous version is still serving"
 
-docker rm -f deetech-build-proxy >/dev/null 2>&1 || true
+# A build that could not reach the API produces an EMPTY site and still
+# exits 0, so the exit code above proves nothing on its own.
+#
+# What to check matters. Grepping the HTML for a service slug gives a false
+# pass — the service URLs are in the hardcoded navigation, so they appear on
+# every page whether or not any content loaded. Verified against a real
+# build with an unreachable API: it exited 0 and the grep still matched.
+#
+# The honest signal is the prerendered DETAIL pages. Those come from
+# generateStaticParams, which returns an empty list when the API cannot be
+# reached, so without content they do not exist at all. An empty build has
+# exactly 8 pages and no detail pages.
+log "     verifying the build actually picked up content"
+DETAIL_PAGES="$(
+  "${COMPOSE[@]}" run --rm --no-deps --entrypoint sh web -c \
+    'find apps/web/.next/server/app -path "*/services/*.html" 2>/dev/null | wc -l' \
+    | tr -cd '0-9'
+)"
+
+if [ "${DETAIL_PAGES:-0}" -lt 1 ]; then
+  fail "the build produced no service detail pages, so it could not reach the API.
+       That image would serve a site with no services, brands or articles.
+       Nothing was swapped in; the previous version is still serving."
+fi
+echo "    $DETAIL_PAGES service detail pages prerendered"
 
 # ---------------------------------------------------------------------------
 log "6/7  Swapping in the new web container"
