@@ -97,8 +97,13 @@ services:
     volumes:
       # Config is read-only inside the container; edit it in the repo and
       # redeploy rather than in place.
-      - ../nginx/deetechgroup.conf:/etc/nginx/conf.d/default.conf:ro
-      - ../nginx/snippets:/etc/nginx/snippets:ro
+      #
+      # Paths are relative to the PROJECT directory — where docker-compose.yml
+      # lives — not to this file. Compose resolves relative paths in an
+      # override against the project directory, so the `../nginx/...` these
+      # once were resolved to /srv/deetech/nginx and nginx would not start.
+      - ./infrastructure/nginx/deetechgroup.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infrastructure/nginx/snippets:/etc/nginx/snippets:ro
       - certbot-conf:/etc/letsencrypt:ro
       - certbot-www:/var/www/certbot:ro
       # The WordPress uploads directory, copied across at cutover so old
