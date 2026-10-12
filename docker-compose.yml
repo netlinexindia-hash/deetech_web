@@ -53,6 +53,16 @@ services:
       context: .
       dockerfile: infrastructure/docker/api.Dockerfile
     restart: unless-stopped
+    # Every key in the API's config schema (apps/api/src/config.ts) has to be
+    # listed here. A container does not inherit .env — compose only passes
+    # what this block names, and anything absent silently falls back to the
+    # schema default.
+    #
+    # That is how the SMTP settings went missing: they were in .env.example
+    # and in the config schema but never passed through, so filling in
+    # credentials would have changed nothing. The mailer no-ops without
+    # SMTP_HOST by design, so nothing would have errored — enquiries would
+    # have kept saving and no email would ever have been sent.
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       API_PORT: 4000
@@ -61,7 +71,24 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+
+      # Optional as a group. With no SMTP_HOST the mailer logs instead of
+      # sending, which is the correct development behaviour and a silent
+      # failure in production — see §9 of the runbook.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-DeeTech Group <no-reply@deetechgroup.com>}
+      ENQUIRY_NOTIFICATION_TO: ${ENQUIRY_NOTIFICATION_TO:-support@deetechgroup.com}
+
+      ENQUIRY_MAX_PER_WINDOW: ${ENQUIRY_MAX_PER_WINDOW:-5}
+      ENQUIRY_WINDOW_MINUTES: ${ENQUIRY_WINDOW_MINUTES:-60}
+
       MEDIA_STORAGE_PATH: /var/lib/deetech/media
+      MEDIA_MAX_UPLOAD_BYTES: ${MEDIA_MAX_UPLOAD_BYTES:-5242880}
     volumes:
       - media-data:/var/lib/deetech/media
     networks:

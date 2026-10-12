@@ -6,7 +6,12 @@ import { z } from "zod";
  * missing the process refuses to start, which is better than silently running
  * with the wrong configuration.
  */
-const envSchema = z.object({
+// Exported so a test can assert that docker-compose.yml passes every key
+// through to the container. A container does not inherit .env, so a key that
+// exists here but is absent from the compose `environment` block silently
+// falls back to its default — which is how the SMTP settings came to be
+// configurable in .env and ignored by the running API.
+export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   API_HOST: z.string().default("0.0.0.0"),
