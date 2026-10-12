@@ -150,7 +150,19 @@ for (const [path, html] of bodies) {
   const hasCanonical = /<link rel="canonical"/.test(html);
   const h1Count = (html.match(/<h1[\s>]/g) ?? []).length;
 
+  // The brand must appear once, not twice. A Next.js `title.template` of
+  // "%s | Brand" applies to any page that sets a plain string title, so a
+  // page whose own title already ends with the brand renders
+  // "Brand — something | Brand". The homepage shipped exactly that: only a
+  // length check guarded the title, and the doubling passed it.
+  const title = html.match(/<title>([^<]*)<\/title>/)?.[1] ?? "";
+  const segments = title.split(" | ");
+  const brand = segments.length > 1 ? segments[segments.length - 1].trim() : "";
+  const brandRepeated =
+    brand.length > 0 && segments.slice(0, -1).join(" | ").includes(brand);
+
   record(hasTitle, `${path} has a title`);
+  record(!brandRepeated, `${path} does not repeat the brand in its title`, title);
   record(hasDescription, `${path} has a meta description`);
   record(hasCanonical, `${path} has a canonical URL`);
   record(h1Count === 1, `${path} has exactly one h1`, `found ${h1Count}`);

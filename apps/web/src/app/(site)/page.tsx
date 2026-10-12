@@ -10,9 +10,16 @@ import { excerpt } from "@/lib/text";
 import { contact, site } from "@/lib/site";
 
 export const metadata: Metadata = {
-  // Overrides the title template on purpose: the homepage title should not
-  // read "Home | DeeTech Group".
-  title: `${site.name} — IT services, web development and hosting`,
+  // No `title` here on purpose. The homepage should not read
+  // "Home | DeeTech Group", and the root layout's `title.default` already
+  // supplies the right string — `default` is precisely what applies when a
+  // page sets no title of its own.
+  //
+  // Setting `title` here as a plain string does NOT override the template,
+  // it feeds it, so the page rendered as
+  // "DeeTech Group — IT services... | DeeTech Group". Overriding needs
+  // `title: { absolute: ... }`; leaving it out is simpler and keeps the
+  // string in one place.
   description: site.description,
   alternates: { canonical: "/" },
 };
