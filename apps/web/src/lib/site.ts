@@ -1,9 +1,8 @@
 /**
  * Site-wide constants: navigation, contact details and canonical metadata.
  *
- * Contact details were verified against the live WordPress site on 2026-10-11
- * (see docs/01-wordpress-audit.md section 5). They are kept here rather than
- * in page markup so there is one place to change them.
+ * Contact details are kept here rather than in page markup so there is one
+ * place to change them.
  */
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -18,12 +17,26 @@ export const site = {
   locale: "en_IN",
 } as const;
 
+/**
+ * E.164, and the only place the digits are written.
+ *
+ * The display format and the WhatsApp link both derive from this. They used
+ * to repeat the digits, so changing the number meant editing three strings
+ * and noticing all three.
+ *
+ * Assumes an Indian mobile: +91 and ten national digits, displayed 5 + 5.
+ * A number in another format needs `phone` spelled out instead.
+ */
+const PHONE_E164 = "+919464204018";
+const PHONE_NATIONAL = PHONE_E164.slice(3);
+
 export const contact = {
-  phone: "+91 86300 10632",
+  phone: `+91 ${PHONE_NATIONAL.slice(0, 5)} ${PHONE_NATIONAL.slice(5)}`,
   /** E.164, for tel: and WhatsApp links. */
-  phoneHref: "+918630010632",
+  phoneHref: PHONE_E164,
   email: "support@deetechgroup.com",
-  whatsapp: "https://wa.me/918630010632",
+  /** wa.me takes the E.164 digits with no leading `+`. */
+  whatsapp: `https://wa.me/${PHONE_E164.slice(1)}`,
   offices: [
     {
       label: "Office",

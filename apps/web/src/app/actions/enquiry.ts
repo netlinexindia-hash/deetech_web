@@ -1,6 +1,7 @@
 "use server";
 
 import { enquirySchema, isLikelySpam } from "@deetech/shared-types";
+import { contact } from "@/lib/site";
 
 /**
  * Receives the contact form.
@@ -83,7 +84,8 @@ export async function submitEnquiry(
       return {
         status: "error",
         message:
-          "We could not send that just now. Please email support@deetechgroup.com or call +91 86300 10632 and we will pick it up.",
+          `We could not send that just now. Please email ${contact.email} or ` +
+          `call ${contact.phone} and we will pick it up.`,
         values,
       };
     }
@@ -94,7 +96,8 @@ export async function submitEnquiry(
     return {
       status: "error",
       message:
-        "We could not reach our systems just now. Please email support@deetechgroup.com or call +91 86300 10632 and we will pick it up.",
+        `We could not reach our systems just now. Please email ${contact.email} ` +
+        `or call ${contact.phone} and we will pick it up.`,
       values,
     };
   }

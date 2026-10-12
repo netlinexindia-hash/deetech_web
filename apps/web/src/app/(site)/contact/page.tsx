@@ -6,8 +6,11 @@ import { contact, SITE_URL, site } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact",
+  // Built from `contact` rather than written out: a hardcoded number here
+  // survived a change to lib/site.ts once already.
   description:
-    "Talk to DeeTech Group about web development, managed IT, networks, business email or hosting. Call +91 86300 10632, email support@deetechgroup.com, or send an enquiry.",
+    `Talk to DeeTech Group about web development, managed IT, networks, business ` +
+    `email or hosting. Call ${contact.phone}, email ${contact.email}, or send an enquiry.`,
   alternates: { canonical: "/contact" },
 };
 

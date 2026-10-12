@@ -32,7 +32,7 @@ Last reviewed: 12 October 2026.
 
 ## Who we are
 
-DeeTech Group, A-47, A Block, Sector 2, Noida, Uttar Pradesh 201301, India. You can reach us at [support@deetechgroup.com](mailto:support@deetechgroup.com) or +91 86300 10632.
+DeeTech Group, A-47, A Block, Sector 2, Noida, Uttar Pradesh 201301, India. You can reach us at [support@deetechgroup.com](mailto:support@deetechgroup.com) or +91 94642 04018.
 
 ## What this website collects
 
