@@ -1,0 +1,132 @@
+# Production overlay.
+#
+#   docker compose -f docker-compose.yml \
+#                  -f infrastructure/deployment/docker-compose.prod.yml up -d
+#
+# Use infrastructure/deployment/deploy.sh rather than running this by hand —
+# it brings the services up in the order the build requires and gates on
+# health checks.
+#
+# Requires Docker Compose v2.24.4 or later, for the `!override` tag used to
+# clear the development port publishes. An older version errors rather than
+# ignoring it, so this cannot silently leave ports exposed.
+#
+# What this overlay changes from the base file:
+#   * adds nginx, the only service exposed to the internet
+#   * stops publishing web and api ports at all; they are reachable only on
+#     the private Docker network
+#   * pins restart policies and log rotation
+#   * mounts persistent volumes for media and TLS material
+
+name: deetech
+
+services:
+  db:
+    restart: always
+    # No ports, in the base file and here. Section 9 of the plan: PostgreSQL
+    # stays off public interfaces.
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # A small VPS; these are modest and deliberate rather than defaults.
+    command:
+      - postgres
+      - -c
+      - max_connections=50
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - log_min_duration_statement=1000
+
+  api:
+    restart: always
+    # Overrides the base file's loopback publish: in production nothing
+    # reaches the API except nginx, over the private network.
+    ports: !override []
+    environment:
+      NODE_ENV: production
+    volumes:
+      - media-data:/var/lib/deetech/media
+
+  web:
+    restart: always
+    ports: !override []
+    build:
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL must be set}
+        NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID:-}
+        API_BASE_URL: http://api:4000
+      # `next build` prerenders content pages by calling the API, so the
+      # build has to reach it. Joining the application network lets the
+      # build container resolve `api` by Docker DNS — the API is not
+      # published to the host in production, so host networking would not
+      # reach it. deploy.sh starts the API before building, which is what
+      # creates this network.
+      #
+      # Without this the build still SUCCEEDS and ships a site with no
+      # services, brands or articles, which is the worst kind of failure.
+      network: deetech_net
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: http://api:4000
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    depends_on:
+      web:
+        condition: service_started
+      api:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Config is read-only inside the container; edit it in the repo and
+      # redeploy rather than in place.
+      - ../nginx/deetechgroup.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../nginx/snippets:/etc/nginx/snippets:ro
+      - certbot-conf:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+      # The WordPress uploads directory, copied across at cutover so old
+      # image URLs keep working. Read-only: nothing writes here again.
+      - ${LEGACY_UPLOADS_DIR:-/srv/deetech/legacy-uploads}:/srv/deetech/legacy-uploads:ro
+    networks:
+      - deetech
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging: &prod-logging
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # Renews certificates and exits. Run from cron, or leave it running with
+  # the sleep loop below — the loop is simpler to reason about on one host.
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    # Checks twice a day; certbot itself is a no-op until a certificate is
+    # within 30 days of expiry.
+    entrypoint: >
+      sh -c 'trap exit TERM;
+             while :; do certbot renew --webroot -w /var/www/certbot --quiet;
+             sleep 12h & wait $${!}; done'
+    logging: *prod-logging
+
+networks:
+  deetech:
+    name: deetech_net
+    driver: bridge
+
+volumes:
+  db-data:
+  media-data:
+  certbot-conf:
+  certbot-www:

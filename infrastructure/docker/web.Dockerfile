@@ -34,6 +34,16 @@ ARG NEXT_PUBLIC_GA_MEASUREMENT_ID
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=$NEXT_PUBLIC_GA_MEASUREMENT_ID
 
+# `next build` prerenders content pages by calling the API, so the API has
+# to be reachable from the build. The production overlay joins the build to
+# the application network, where `api` resolves by Docker DNS.
+#
+# This is NOT a secret and is not inlined into the client bundle — it is
+# only read server-side. Without it the build still succeeds and ships a
+# site with no services, brands or articles.
+ARG API_BASE_URL=http://api:4000
+ENV API_BASE_URL=$API_BASE_URL
+
 RUN npm run build --workspace=@deetech/shared-types \
  && npm run build --workspace=@deetech/web
 

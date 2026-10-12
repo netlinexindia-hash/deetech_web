@@ -98,6 +98,10 @@ services:
 
 networks:
   deetech:
+    # Named explicitly rather than letting compose prefix it with the
+    # project name, so `build.network` in the production overlay can refer
+    # to it by a name that does not change.
+    name: deetech_net
     driver: bridge
 
 volumes:

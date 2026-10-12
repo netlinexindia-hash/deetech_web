@@ -16,7 +16,7 @@ The full specification and the 30-day backlog are in
 | 3 | API and database | **Done** — see [`docs/week-3-report.md`](docs/week-3-report.md) |
 | 4 | Admin CMS | **Done** — see [`docs/week-4-report.md`](docs/week-4-report.md) |
 | 5 | Content migration and release candidate | **Done** — see [`docs/week-5-report.md`](docs/week-5-report.md) |
-| 6 | Production launch | Not started |
+| 6 | Production launch | **Prepared, not deployed** — see [`docs/week-6-report.md`](docs/week-6-report.md) |
 
 ## Stack
 
@@ -123,6 +123,7 @@ Run from the repository root.
 | `npm run db:migrate\|db:seed\|db:setup --workspace=@deetech/api` | Against whatever `DATABASE_URL` points at |
 | `npm run admin:create --workspace=@deetech/api` | Creates an admin account |
 | `node infrastructure/deployment/verify-redirects.mjs` | Checks every legacy URL has a rule and every destination resolves |
+| `node infrastructure/deployment/smoke-test.mjs --base <url>` | 80+ acceptance checks against a deployed site |
 | `npm run check` | Everything above, in the order CI runs it |
 
 ## Redirect map
@@ -194,6 +195,27 @@ Field layout for the CMS forms is described once in
 `apps/web/src/lib/admin/resources.ts`; the list and edit pages render from
 it. That registry is presentation only — validation lives in the shared Zod
 schemas.
+
+## Deploying
+
+Follow **[`docs/06-deployment-runbook.md`](docs/06-deployment-runbook.md)**.
+Once the server is set up, a deploy is:
+
+```bash
+infrastructure/deployment/deploy.sh
+```
+
+It backs up first, migrates in a throwaway container, waits for the API to
+be healthy **before** building web (the build prerenders by calling the API,
+and without it the build succeeds and ships empty content pages), validates
+the nginx config before reloading, and leaves the previous version serving
+if any step fails. `rollback.sh` reverses it, warning if migrations were
+added in between.
+
+**None of the deployment has been run.** Docker is not installed on the
+development machine and there is no VPS access from it, so the compose
+files, nginx config and scripts are written and syntax-checked but
+unexecuted. Work through the runbook on a staging hostname first.
 
 ## Backup and restore
 
@@ -272,6 +294,8 @@ exist to provide is covered by `apps/api/tests/backup-restore.test.ts`.
 - [`docs/week-3-report.md`](docs/week-3-report.md) — schema, migrations, public endpoints, enquiries, admin auth
 - [`docs/week-4-report.md`](docs/week-4-report.md) — the admin CMS, media uploads, and the build-time API constraint
 - [`docs/week-5-report.md`](docs/week-5-report.md) — legal pages, redirect verification, permission and email tests, backup/restore
+- [`docs/week-6-report.md`](docs/week-6-report.md) — what is ready to deploy and what has not been run
+- **[`docs/06-deployment-runbook.md`](docs/06-deployment-runbook.md) — how to put this on the VPS and cut over from WordPress**
 - [`database/README.md`](database/README.md) — how to run migrations and seeds, and why the schema is shaped the way it is
 - [`docs/redirects.csv`](docs/redirects.csv) — legacy URL map
 - [`docs/audit/legacy-copy/`](docs/audit/legacy-copy) — plain-text extract of every live page, for the Day 21 content migration
