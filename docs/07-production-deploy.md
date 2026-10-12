@@ -184,7 +184,9 @@ updates the redirect rules and a reload picks them up.
 ## 7. First deploy
 
 Seeding comes **before** the first deploy. `deploy.sh` migrates but does not
-seed, and its build guard refuses a site with no content.
+seed, and its build guard refuses a site with no content. The `build api`
+step below is what puts the current seed files in the image — see the note
+after this block.
 
 ```bash
 cd /srv/deetech/site
@@ -278,6 +280,25 @@ A successful run ends with `Deployed` and, at step 5, a line reading
 `N service detail pages prerendered`. If that number is zero the deploy
 stops: the build could not reach the API and would have shipped an empty
 site.
+
+### Changing a seed later
+
+**The seed SQL lives inside the API image**, not in the checkout. The
+Dockerfile copies `database/` in, and `cli.js` reads it from there. So
+editing a seed file and re-running `seed` changes nothing until the image
+has been rebuilt.
+
+The order is **pull, deploy, then re-seed**:
+
+```bash
+git pull
+sudo DEPLOY_MODE=host-nginx infrastructure/deployment/deploy.sh
+sudo $COMPOSE run --rm --no-deps -T api node apps/api/dist/db/cli.js seed
+```
+
+Seeds upsert, so re-running brings approved content back in line rather
+than duplicating it. Note that this also **overwrites edits made in the
+admin panel** to anything a seed covers.
 
 ## 8. Verify — before DNS moves
 
