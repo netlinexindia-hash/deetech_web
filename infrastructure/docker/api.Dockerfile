@@ -42,6 +42,16 @@ RUN npm ci --omit=dev --workspace=@deetech/api --include-workspace-root \
 COPY --from=build /app/packages/shared-types/dist ./packages/shared-types/dist
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 
+# The migration runner and the seeder read these SQL files at runtime, not at
+# build time, resolving them relative to the compiled output — so
+# apps/api/dist/db/ looks up four levels to /app/database/. They are data
+# rather than code, which is why they are copied instead of compiled.
+#
+# Without this the image builds and the API serves fine; only `cli.js
+# migrate` fails, and only when run, with ENOENT on
+# /app/database/migrations/. That is step 3 of deploy.sh.
+COPY database ./database
+
 # Run unprivileged. The `node` user ships with the base image as uid 1000.
 USER node
 

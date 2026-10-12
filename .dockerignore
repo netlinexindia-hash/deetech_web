@@ -1,0 +1,53 @@
+# Keeps the build context small and, more importantly, keeps host artefacts
+# out of the images. Both Dockerfiles copy explicit paths rather than `COPY
+# . .`, so nothing here is load-bearing for secrets — but `COPY apps/web
+# ./apps/web` would otherwise pull in a stale .next or a host-built
+# node_modules, which is how a build picks up artefacts that were never meant
+# to ship. (Week 5 lost time to exactly that: a stale .next served content
+# the database no longer had.)
+#
+# database/ is deliberately NOT ignored: the API image needs the migration
+# and seed SQL at runtime.
+
+# Dependencies — reinstalled inside the image for the right platform
+node_modules
+**/node_modules
+
+# Build output — rebuilt inside the image
+.next
+**/.next
+dist
+**/dist
+*.tsbuildinfo
+
+# Secrets and local state. Never copied by either Dockerfile, excluded
+# anyway so a future `COPY` cannot start leaking them.
+.env
+.env.*
+!.env.example
+.devdata
+
+# Version control and CI
+.git
+.github
+.gitattributes
+
+# Local tooling and editor state
+.claude
+.vscode
+.idea
+
+# Test and coverage output
+coverage
+**/coverage
+test-results
+
+# Documentation and planning material — not needed to build or run
+docs
+*.docx
+README.md
+**/README.md
+
+# OS noise
+.DS_Store
+Thumbs.db
