@@ -326,6 +326,20 @@ The password is generated and printed once. Put it in a password manager
 immediately. It is deliberately not a command-line argument — argv is
 readable by other processes on the machine and lands in shell history.
 
+To choose it yourself, pass it through the environment with
+`sudo -E ... run --rm -e ADMIN_PASSWORD ...` after `export ADMIN_PASSWORD`.
+Setting it in `.env` does **not** work: a container inherits only what the
+compose `environment:` block names, and ADMIN_PASSWORD is deliberately not
+in it, since a long-lived service environment is readable with
+`docker inspect`.
+
+**There is no change-password screen in the admin UI** — login only, no
+reset, no user management. A forgotten password is recovered by deleting the
+`admin_users` row and re-running this command; every foreign key to that
+table is ON DELETE SET NULL or CASCADE, so it is safe, at the cost of
+nulling that account's authorship on articles and media. See
+[`07-production-deploy.md`](07-production-deploy.md) for the exact commands.
+
 ---
 
 ## 5. Verify, before pointing DNS at it

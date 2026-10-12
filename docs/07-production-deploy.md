@@ -205,11 +205,74 @@ sudo DEPLOY_MODE=host-nginx infrastructure/deployment/deploy.sh
 
 Put that password in a password manager immediately. There are **no admin
 users after seeding** — the seeds create none on purpose, so there is no
-default account to forget about. The password is generated rather than
-passed as an argument, because argv is readable by other processes on the
-machine and lands in shell history.
+default account to forget about.
 
 Add `--role editor` for anyone who should manage content but not accounts.
+
+### Where admin credentials are defined
+
+**Nowhere in a file.** Not in `.env`, not in a seed, not in the compose
+file. They exist only in the `admin_users` table, and the only thing stored
+is an Argon2id hash. The account is created by the command above, at deploy
+time, and that is the only place the email is chosen.
+
+The **email** is the `--email` argument. The **password** is generated and
+printed once — deliberately not an argument, because argv is readable by
+other processes and lands in shell history.
+
+To choose the password yourself, pass it through the environment rather
+than the command line:
+
+```bash
+read -rsp "Admin password (12+ chars): " ADMIN_PASSWORD; echo
+export ADMIN_PASSWORD
+
+sudo -E $COMPOSE run --rm --no-deps -T -e ADMIN_PASSWORD \
+  api node apps/api/dist/db/create-admin.js \
+  --email you@deetechgroup.com --name "Your Name"
+
+unset ADMIN_PASSWORD
+```
+
+Three details that matter, all verified on a real host:
+
+- **`-e ADMIN_PASSWORD` with no `=value`.** That passes the variable through
+  from your shell, so the password never appears in the command line.
+- **`sudo -E`**, or `sudo` drops the variable and the script silently
+  generates one instead.
+- **Putting `ADMIN_PASSWORD` in `.env` does not work.** A container does not
+  inherit `.env`; compose passes only what the service's `environment:`
+  block names, and `ADMIN_PASSWORD` is deliberately not in it — a long-lived
+  service environment is readable with `docker inspect`, which is no place
+  for an admin password.
+
+### There is no way to change a password in the app
+
+Worth knowing before you hand accounts out: the admin UI has **login only**.
+No change-password screen, no reset-by-email, no user management. Creating
+accounts is the CLI, and that is the whole story.
+
+So a forgotten password is recovered by deleting the row and creating the
+account again:
+
+```bash
+sudo $COMPOSE exec -T db psql -U deetech -d deetech \
+  -c "DELETE FROM admin_users WHERE lower(email) = lower('you@deetechgroup.com');"
+# then re-run create-admin.js as above
+```
+
+This is safe — every foreign key to `admin_users` is `ON DELETE SET NULL` or
+`ON DELETE CASCADE`, so sessions disappear and nothing else breaks. The one
+cost is that the deleted account's authorship is nulled: articles they wrote
+and media they uploaded lose the attribution. Re-creating the same email
+does not restore it.
+
+`create-admin.js` refuses to overwrite an existing account, so the delete is
+not optional.
+
+**If more than one person will have an account, say so and get a
+change-password flow built first.** Shared knowledge of a password that
+cannot be rotated is not a position to be in once the site is live.
 
 A successful run ends with `Deployed` and, at step 5, a line reading
 `N service detail pages prerendered`. If that number is zero the deploy
